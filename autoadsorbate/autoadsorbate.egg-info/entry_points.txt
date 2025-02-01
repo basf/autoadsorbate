@@ -1,2 +1,0 @@
-[console_scripts]
-autoadsorbate = autoadsorbate.cli:main

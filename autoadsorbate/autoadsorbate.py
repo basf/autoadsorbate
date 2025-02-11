@@ -110,7 +110,7 @@ class Surface:
         site_df (pd.DataFrame): DataFrame containing site information.
     """
 
-    def __init__(self, atoms: Atoms, precision: float = 0.25, touch_sphere_size: float = 3):
+    def __init__(self, atoms: Atoms, precision: float = 0.25, touch_sphere_size: float = 3, dummy: bool = False):
         """
         Initialize attributes.
 
@@ -119,12 +119,17 @@ class Surface:
             precision (float, optional): The precision for the grid spacing. Defaults to 0.25.
             touch_sphere_size (float, optional): The size of the touch sphere. Defaults to 3.
         """
+        self.dummy = dummy
         self.atoms = atoms
         self.precision = precision
         self.touch_sphere_size = touch_sphere_size
-        self.site_dict = get_shrinkwrap_ads_sites(atoms=self.atoms, precision=self.precision, touch_sphere_size=self.touch_sphere_size)
-        self.site_df = pd.DataFrame(self.site_dict)
-        self.sort_site_df()
+        if self.dummy:
+            self.site_dict={}
+            self.site_df = pd.DataFrame(self.site_dict)
+        else:
+            self.site_dict = get_shrinkwrap_ads_sites(atoms=self.atoms, precision=self.precision, touch_sphere_size=self.touch_sphere_size)
+            self.site_df = pd.DataFrame(self.site_dict)
+            self.sort_site_df()
 
     def sort_site_df(self, by: str = 'xyz'):
         """

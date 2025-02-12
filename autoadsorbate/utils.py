@@ -149,8 +149,10 @@ def read_relax_dir(files):
     for i, file in enumerate(files):
         atoms = read_relax_traj(file)
         relaxed_traj.append(atoms)
-        atoms.info['traj_index'] = i
-        rdf.append(atoms.info)
+        info = atoms.info.pop('adsorbate_info')
+        info.update(atoms.info)
+        info['traj_index'] = i
+        rdf.append(info)
         
     rdf = pd.DataFrame(rdf)
     rdf = rdf.fillna(0.)

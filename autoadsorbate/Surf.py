@@ -898,6 +898,8 @@ def get_nvector(atoms: Atoms) -> np.ndarray:
     """
     nvector = np.array([0, 0, 1])  # Default normal vector
 
+    if len(atoms) ==1:
+        return atoms[0].position
     atom1 = atoms[0]  # First surrogate atom
     atom2 = atoms[1]  # Second atom
 
@@ -1299,7 +1301,6 @@ def conformer_to_site(atoms, site, conformer, mode='optimize', overlap_thr = 0):
         conformer = conformer[2:]
     if conformer.info['smiles'][:2] == 'Cl':
         conformer = conformer[1:]
-
 
     conformer=align_to_vector(conformer, site['n_vector'])
 

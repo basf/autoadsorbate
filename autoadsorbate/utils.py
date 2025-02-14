@@ -481,7 +481,7 @@ def is_clear_to_start(fname):
         return True
 
 
-def relaxatoms(atoms, calc, prefix, steps=300, freeze_bottom=False):
+def relaxatoms(atoms, calc, prefix, steps=300, freeze_bottom=False, fmax=0.05):
     """
     Relaxes the atomic positions of a given structure using a specified calculator and saves the relaxation trajectory.
 
@@ -504,7 +504,7 @@ def relaxatoms(atoms, calc, prefix, steps=300, freeze_bottom=False):
 
     dyn = BFGS(atoms)
     dyn.attach(save_relax_config, interval=1, dyn=dyn, fname=fname)
-    dyn.run(fmax=0.05, steps=steps)
+    dyn.run(fmax=fmax, steps=steps)
 
     return atoms.get_potential_energy()
 

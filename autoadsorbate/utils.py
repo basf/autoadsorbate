@@ -109,12 +109,15 @@ def read_relax_traj(file, pop_site_info=True):
     object: The final atomic structure with updated information.
     """
     traj = read(file, index=':')
-    atoms = traj[-1]
-    atoms.info['bond_change'] = get_backbone_bond_change(traj)
+    if len(traj) == 0:
+        atoms = traj
+    else:
+        atoms = traj[-1]
+        atoms.info['bond_change'] = get_backbone_bond_change(traj)
+        atoms.info['snap_pos_compare'] = snap_pos_compare(traj[0], traj[-1])
+
     atoms.info['backbone_formula'] = atoms[[atom.index for atom in atoms if atom.symbol in ['C', 'O']]].get_chemical_formula()
     # atoms.info['H_count'] = atoms[[atom.index for atom in atoms if atom.symbol in ['H']]].get_chemical_formula()
-    atoms.info['snap_pos_compare'] = snap_pos_compare(traj[0], traj[-1])
-
     if 'adsorbate_formula_count' not in atoms.info.keys():
         atoms.info['adsorbate_formula_count'] = atoms[[atom.index for atom in atoms if atom.symbol in ['C','H', 'O']]].symbols.formula.count()
 

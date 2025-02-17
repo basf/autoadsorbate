@@ -163,7 +163,7 @@ def read_relax_dir(files):
     rdf = rdf.fillna(0.)
     return rdf, relaxed_traj
 
-def compute_energy(df, ref_dict, parent_en):
+def compute_energy(df, ref_dict, parent_en_dict):
     """
     Computes the energy of atomic structures based on reference energies and parent energy.
 
@@ -177,7 +177,7 @@ def compute_energy(df, ref_dict, parent_en):
     """
     for symbol in ['C', 'H', 'O']:
         df[f'{symbol}_en'] = [ref_dict[symbol] for i in df.index.values]
-    df['parent_en'] = [parent_en for i in df.index.values]
+    df['parent_en'] = [parent_en_dict[pid] for pid in df.pid.values]
 
     df['energy'] = df['mlff_energy'] - (
         df['parent_en'] + df['C'] * df['C_en'] + df['O'] * df['O_en'] + df['H'] * df['H_en']

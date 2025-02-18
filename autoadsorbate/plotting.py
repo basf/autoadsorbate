@@ -263,14 +263,16 @@ def plot_energy_heatmap(_xdf, column, std, e_min, e_max, resolution, normalize,
         else:
             xticklabels.append('')
 
-    # ax = sns.heatmap(df, annot=True, fmt='.2f', center=0)
+    if ax == None:
+        fig = plt.figure()
+        ax=fig.add_subplot(111)
     if T==False:
-        ax = sns.heatmap(heat_map, xticklabels=xticklabels, yticklabels=yticklabels, cbar=False)
+        sns.heatmap(heat_map, xticklabels=xticklabels, yticklabels=yticklabels, cbar=False, ax=ax)
         for i in range(heat_map.shape[0]+1):
             ax.axhline(i, color='white', lw=2 )
     
     else:
-        ax = sns.heatmap(heat_map.T, xticklabels=yticklabels, yticklabels=xticklabels, cbar=False, cmap=cmap)   
+        ax = sns.heatmap(heat_map.T, xticklabels=yticklabels, yticklabels=xticklabels, cbar=False, cmap=cmap, ax=ax)   
         for i in range(heat_map.shape[1]+1):
             ax.axvline(i, color='white', lw=0.5)
     
@@ -280,6 +282,4 @@ def plot_energy_heatmap(_xdf, column, std, e_min, e_max, resolution, normalize,
     ax.invert_yaxis()
     
     if return_heatmap:
-        return ax, heat_map
-    else:
-        return ax
+        return heat_map

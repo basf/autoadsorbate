@@ -227,7 +227,7 @@ def make_hist_plot(_xdf):
     plt.tight_layout(pad=0.01, w_pad=0.4, h_pad=0.01)
 
 def plot_energy_heatmap(_xdf, column, std, e_min, e_max, resolution, normalize,
-                        return_heatmap=False, T=False, cmap ='viridis', normalize_mode='max'):
+                        return_heatmap=False, T=False, cmap ='viridis', normalize_mode='max', ax=None):
     heat_map = []
     yticklabels = []
     

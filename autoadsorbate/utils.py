@@ -12,6 +12,9 @@ from ase.io import read, write
 from ase.constraints import FixAtoms
 from ase.visualize.plot import plot_atoms
 from ase.build.tools import sort as sort_atoms
+from ase.optimize.minimahopping import MinimaHopping
+from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+from ase.md import VelocityVerlet
 
 
 def rotation_matrix_from_vectors(vec1, vec2):
@@ -508,6 +511,32 @@ def relaxatoms(atoms, calc, prefix, steps=300, freeze_bottom=False, fmax=0.05):
     dyn = BFGS(atoms)
     dyn.attach(save_relax_config, interval=1, dyn=dyn, fname=fname)
     dyn.run(fmax=fmax, steps=steps)
+
+    return atoms.get_potential_energy()
+
+def minhopatoms(atoms, calc, prefix, steps=10, fmax=0.05, temperature=1000):
+    from ase.optimize.minimahopping import MinimaHopping
+
+    fname = f"{prefix}_{atoms.info['uid']}.xyz"
+    atoms.calc = calc
+
+    dyn = BFGS(atoms)
+
+    opt = MinimaHopping(
+        atoms=atoms,
+        T0 =  1000., # K, initial MD ‘temperature’
+        Ediff0 =  0.5, # eV, initial energy acceptance threshold
+        logfile =  f'hop_{fname}.log', # text log
+        minima_threshold = 0.5, # A, threshold for identical configs
+        timestep = 1.0,
+        minima_traj = f'{fname}.traj'
+        fmax = fmax
+        )
+    opt.attach(save_relax_config, interval=1, dyn=dyn, fname=fname)
+    opt(totalsteps=steps)
+
+    
+    # dyn.run(fmax=fmax, steps=steps)
 
     return atoms.get_potential_energy()
 

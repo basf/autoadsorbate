@@ -529,7 +529,7 @@ def minhopatoms(atoms, calc, prefix, steps=10, fmax=0.05, temperature=1000):
         logfile =  f'hop_{fname}.log', # text log
         minima_threshold = 0.5, # A, threshold for identical configs
         timestep = 1.0,
-        minima_traj = f'{fname}.traj'
+        minima_traj = f'{fname}.traj',
         fmax = fmax
         )
     opt.attach(save_relax_config, interval=1, dyn=dyn, fname=fname)

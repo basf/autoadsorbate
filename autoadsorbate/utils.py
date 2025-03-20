@@ -532,7 +532,7 @@ def minhopatoms(atoms, calc, prefix, steps=10, fmax=0.05, temperature=1000):
         minima_traj = f'{fname}.traj',
         fmax = fmax
         )
-    opt.attach(save_relax_config, interval=1, dyn=dyn, fname=fname)
+#    opt.attach(save_relax_config, interval=1, dyn=dyn, fname=fname)
     opt(totalsteps=steps)
 
     

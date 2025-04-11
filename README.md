@@ -1,10 +1,22 @@
+# Table of Contents
+
+- [Installation](#installation)
+- [AutoAdsorbate](#AutoAdsorbate)
+  - [Fragment](#fragment)
+    - [Molecules](#molecules)
+    - [Reactive species](#reactive-species)
+  - [Surface](#surface)
+- [Making surrogate SMILES automatically](#making-surrogate-smiles-automatically)
+- [Fully automatic - populate Surface with Fragment](#fully-automatic---populate-surface-with-fragment)
+
+
 ## Installation
 
 ```python
 pip install autoadsorbate
 ```
 
-## autoadsorbate
+## AutoAdsorbate
 
 AutoAdsorbate is a lightweight and easy-to-use Python package for generating chemically meaningful configurations of molecules and fragments on surfaces. Built with minimal dependencies and a low barrier to entry, it enables rapid setup of surface-adsorbate systems using the Surrogate-SMILES (*SMILES) representation. Ideal for researchers in catalysis, nanotech, and materials science, AutoAdsorbate streamlines dataset generation for simulations and machine learning workflows.
 
@@ -33,18 +45,16 @@ To effectively simulate reactive behavior at surfaces, it is crucial to establis
 
 <!-- ### basic imports -->
 
-the idea was to keep the package as light as possible, hence the foundation of this package is ase and rdkit, allong with some basic python packages (pandas, numpy, etc.)
+The package is designed to be as lightweight as possible, to make its implemetation into existing environments with complex dependecies as straight-forward as possible.
+- Built on:
+  - `ase`
+  - `rdkit`
+  - Basic Python packages: `pandas`, `numpy`
 
-
-```python
-# from autoadsorbate.autoadsorbate import Surface, Fragment
-# from ase.io import read, write
-# from ase.visualize import view
-# from ase.visualize.plot import plot_atoms
-# import matplotlib.pyplot as plt
-```
 
 ### Fragment
+
+Molecules and reactive species are both initialized as the Fragment object (based on ase.Atoms). Some examples are given bellow.
 
 #### Molecules
 
@@ -65,14 +75,12 @@ fig = docs_plot_conformers(conformer_trajectory)
 ![png](README_files/README_10_0.png)
     
 
+Notice that the orientation of the fragment is arbitrary. While we could simply place these structures onto the surface of a material, it would be difficult to evaluate the quality of these initial random configurations. This uncertainty would force us to sample a large number of structures and run dynamic simulations to explore local minima and determine which configurations are the most stable.
 
-Notice that the orientation of the fragment is arbitrary. We could simply paste these structures on a surface of some material, but it would be difficult to quantify the quality of the initial random guesses and hence how many structures we need to sample. We would then have to run dynamic simulations to probe for local minima and check which minima are the most stable.
-
-In this case of DME, we can use our knowledge of chemistry to simplify the problem. Since the O atom bridging the two methyl groups had 2 "lone electron pairs," we can use a simple trick: replacing one of the lone pairs with a marker atom (let's use Cl).
+However, in the case of DME, we can leverage chemical intuition to simplify the problem. The oxygen atom bridging the two methyl groups has two lone electron pairs. By using a simple trick—replacing one of these lone pairs with a marker atom (such as chlorine, Cl)—we can guide the placement more effectively.
 
 
-Notice that we had to make two adjustments to the SMILES string:
-- to be able to replace the lone pair with a marker we must "trick" the valnce of the O atom, and reshufle the smiles formula so that the marker is in first place (for easy book-keeping)
+Notice that we had to make two adjustments to the SMILES string. To replace the lone pair with a marker atom, we must "trick" the valence of the oxygen atom and rearrange the SMILES formula so that the marker atom appears first (for easier bookkeeping).
     - ```COC``` original
     - ```CO(Cl)C``` add Cl instead of the O lone pair (this is an invalid SMILES)
     - ```C[O+](Cl)C``` trick to make the valence work
@@ -86,28 +94,17 @@ from autoadsorbate.Smile import get_marked_smiles
 marked_smile = get_marked_smiles(['COC'])[0]
 marked_smile
 ```
-
-
-
-
     'Cl[O+](C)(C)'
 
-
-
+These surrogate smilles san now be used to initialize a Fragment object (we can set the number of randoms conformers to be initialized):
 
 ```python
 f = Fragment(smile = 'Cl[O+](C)(C)', to_initialize = 5)
 len(f.conformers)
 ```
-
-
-
-
     5
 
-
-
-
+We can visualize these structures:
 ```python
 from autoadsorbate.utils import docs_plot_conformers
 conformer_trajectory = f.conformers
@@ -216,7 +213,9 @@ fig = docs_plot_conformers(oriented_conformer_trajectory)
 
 ### Surface
 
-First we need to have a slab (slab is an arrangement of atoms that contains the boundry between the material in question and other - i.e. gas, fluid, other material). We can read one (```ase.io.read('path_to_file')```) we prepared earlier, or we can use ase to construct a new slab:
+Defining the surface of a slab may seem like a simple task, but different approaches can yield varying results depending on the context. When considering catalytic sites, we can define these as surface regions capable of binding a fragment. By using reasonable steric criteria—essentially asking, "Is there enough space for a molecule to bind to that site?"—we can identify all possible binding sites on the slab's surface. These sites can be classified as top, bridge, or multi-fold, depending on how many atoms surround the site.
+
+As an example: First, we need to define a slab (any ```ase.Atoms``` object). A slab is an arrangement of atoms that represents the boundary between a material and another phase, such as gas, fluid, or another material. We can either read an existing slab, or a new slab:
 
 
 ```python
@@ -235,15 +234,6 @@ plot_atoms(s.view_surface(return_atoms=True))
 
     Visualizing surface Cu atoms as Zn
 
-
-
-
-
-    <Axes: >
-
-
-
-
     
 ![png](README_files/README_35_2.png)
     
@@ -255,9 +245,6 @@ We have access to all the sites info as a pandas dataframe:
 ```python
 s.site_df.head()
 ```
-
-
-
 
 <div>
 <style scoped>
@@ -351,7 +338,7 @@ s.site_dict.keys()
 
 
 
-One can easily get access to sites ase.Atoms and find useful information in the ase.Atoms.info:
+One can easily get access to sites as ```ase.Atoms``` as well, and find useful information in the ```ase.Atoms.info```:
 
 
 ```python
@@ -370,7 +357,7 @@ site_atoms.info
      'site_formula': {'Cu': 1}}
 
 
-
+We can visualize a few surface sites:
 
 ```python
 from autoadsorbate.utils import docs_plot_sites
@@ -383,7 +370,7 @@ fig = docs_plot_sites(s)
     
 
 
-We can keep only the symmetry unique ones like this:
+We can reduce the complete list of sites based on symmetry (```ase.utils.structure_comparator.SymmetryEquivalenceCheck```):
 
 
 ```python
@@ -462,7 +449,7 @@ s.site_df
 </div>
 
 
-
+We can again visualize the sites:
 
 ```python
 plot_atoms(s.view_surface(return_atoms=True))
@@ -474,18 +461,13 @@ plot_atoms(s.view_surface(return_atoms=True))
 
 
 
-    <Axes: >
-
-
-
-
-    
 ![png](README_files/README_45_2.png)
     
 
 
 ## Making surogate SMILES automatically
 
+Simple methods of brute force SMILES enumeration are implemented as well. For example, only using a few lines of code we can initialize multiple conformers of all reaction intermediaries in the nitrogen hydrogenation reaction. A template of the required information can be found here:
 
 ```python
 from autoadsorbate.string_utils import _example_config
@@ -503,7 +485,7 @@ _example_config
      'make_labeled': True}
 
 
-
+Now we can use (or edit) this information as we see fit:
 
 ```python
 from autoadsorbate.string_utils import construct_smiles
@@ -519,6 +501,7 @@ config = {
 
 smiles = construct_smiles(config)
 ```
+We now have a list of surrgate SMILES that can be used to initalize Fragment objects.
 
 
 ```python
@@ -607,7 +590,7 @@ len(trj)
 
     52
 
-
+From the list of initilazied conformers we can remove the ones that are efectively identical:
 
 
 ```python
@@ -617,12 +600,9 @@ xtrj = get_drop_snapped(trj, d_cut=1.5)
 len(xtrj)
 ```
 
-
-
-
     33
 
-
+We can visualize these structures:
 
 
 ```python
@@ -658,24 +638,32 @@ fig.set_layout_engine(layout='tight')
 
 ## Fully automatic - populate Surface with Fragment
 
+A autonomous mode of Fragment placement on Surface is also implemented. The method tries to minimze the overlap of the Fragment and Surface while keeping the requested connectivity to the surface.
 
 ```python
 from ase.build import fcc211
 from autoadsorbate.autoadsorbate import Surface, Fragment
 
-slab = fcc211(symbol = 'Cu', size=(6,3,3), vacuum=10)
-s=Surface(slab, touch_sphere_size=2.7)
-s.sym_reduce()
+slab = fcc211(symbol = 'Cu', size=(6,3,3), vacuum=10)  # any ase.Atoms object
+s=Surface(slab, touch_sphere_size=2.7)                 # finding all surface atoms
+s.sym_reduce()                                         # keeping only non-identical sites
 
 fragments = [
-    Fragment('S1S[OH+]CC(N)[OH+]1', to_initialize=20),
-    Fragment('Cl[OH+]CC(=O)[OH+]', to_initialize=5)
+    Fragment('S1S[OH+]CC(N)[OH+]1', to_initialize=20), # For each *SMILES we can request a differnet number of conformers 
+    Fragment('Cl[OH+]CC(=O)[OH+]', to_initialize=5)    # based on how much conformational complexity we expect.
 ]
 
 out_trj = []
 for  fragment in fragments:
-    out_trj += s.get_populated_sites(fragment, site_index='all', sample_rotation=True, mode='heuristic',
-                                     conformers_per_site_cap=5, overlap_thr=1.6, verbose=True)
+    out_trj += s.get_populated_sites(
+      fragment,                    # Fragment object
+      site_index='all',            # a single site can be provided here
+      sample_rotation=True,        # rotate the Fragment around the surface-fragment bond?
+      mode='heuristic',            # 'all' or 'heuristic', if heuristic surrogate smiles with 'Cl...' will be matched with top sites, etc. 
+      conformers_per_site_cap=5,   # max number of conformers to sample
+      overlap_thr=1.6,             # tolerated bond overlap betwen the surface and fragment      
+      verbose=True
+      )
     print('out_trj ', len(out_trj))
 ```
 

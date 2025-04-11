@@ -21,8 +21,6 @@ classifiers = [
     "Operating System :: OS Independent"
 ]
 dependencies = [
-    "numpy",
-    "pandas",
-    "ase",
-    "rdkit"
-]
+    "ase>=3.24.0",
+    "rdkit>=2022.9.5"
+

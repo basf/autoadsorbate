@@ -1,28 +1,8 @@
-## dev cells
-
+## Installation
 
 ```python
-%load_ext autoreload
-%autoreload 2
-
-import sys
-sys.path.insert(0, '/gpfs/users/home/fakoed/qm_inorganics/notebook_edvin/git/autoadsorbate/')
-
-from autoadsorbate.autoadsorbate import Surface, Fragment
-from ase.io import read, write
-from ase.visualize import view
-from ase.visualize.plot import plot_atoms
-
-import inspect
-inspect.getabsfile(Surface)
+pip install autoadsorbate
 ```
-
-
-
-
-    '/gpfs/users/home/fakoed/qm_inorganics/notebook_edvin/git/autoadsorbate/autoadsorbate/autoadsorbate.py'
-
-
 
 ## autoadsorbate
 
@@ -499,7 +479,7 @@ plot_atoms(s.view_surface(return_atoms=True))
     
 
 
-## Making surrgate smiles automatically
+## Making surogate SMILES automatically
 
 
 ```python

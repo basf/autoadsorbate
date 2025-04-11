@@ -6,23 +6,28 @@ pip install autoadsorbate
 
 ## autoadsorbate
 
-The challenge of generating initial structures for heterogeneous catalysis is traditionally addressed through manual labor. However, this package aims to offer an alternative approach.
+AutoAdsorbate is a lightweight and easy-to-use Python package for generating chemically meaningful configurations of molecules and fragments on surfaces. Built with minimal dependencies and a low barrier to entry, it enables rapid setup of surface-adsorbate systems using the Surrogate-SMILES (*SMILES) representation. Ideal for researchers in catalysis, nanotech, and materials science, AutoAdsorbate streamlines dataset generation for simulations and machine learning workflows.
 
-To effectively simulate reactive behavior at surfaces, it is crucial to establish clear definitions within our framework. The following definitions are essential in order to accurately characterize the structures of interest:
+The challenge of generating initial structures for heterogeneous catalysis has traditionally been addressed through manual effort. This package offers an alternative, automated approach.
 
-- __Fragment__: 
-    - <font color='red'>Molecules</font> - species that exist in their corresponding geometries __even when isolated from the surface__.
-    - <font color='red'>Reactive species</font> - species that exist in their corresponding geometries __only when attached to the surface__.
+To effectively simulate reactive behavior at surfaces, it is crucial to establish clear definitions within our framework. The following definitions are essential for accurately characterizing the structures of interest:
+
+- __Fragment__:
+    - <font color='red'>Molecules</font> – species that retain their corresponding geometries __even when isolated from the surface__.
+    - <font color='red'>Reactive species</font> – species that adopt their corresponding geometries __only when attached to the surface__.
+    
 - __Surface__:
-    - The definition of the surface is simple - <font color='red'>every atom of the slab that can be in contact with an intermediate is considered a surface atom</font>. The surface is a collection of such atoms.
+    - The surface is defined simply – <font color='red'>every atom of the slab that can be in contact with an intermediate is considered a surface atom</font>. The surface is the collection of such atoms.
     - Every atom of the surface is a "top" site.
-    - When two "top" sites are close (close in its literal meaning) to each other, they form a "bridge" site.
-    - When three "top" sites are close (close in its literal meaning) to each other, they form a "3-fold" site.
+    - When two "top" sites are close (close in its literal meaning), they form a "bridge" site.
+    - When three "top" sites are close (close in its literal meaning), they form a "3-fold" site.
     - etc.
+    
 - __Active Site__:
     - A collection of one or more sites that can facilitate a chemical transformation is called an active site.
     - A "top" site can be an active site only for Eley-Rideal transformations.
     - All other transformations require that at least one intermediate binds through at least two sites. All involved sites compose an active site.
+    
 - __Intermediate__:
     - Intermediates are fragments bound to an active site.
 

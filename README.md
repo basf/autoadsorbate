@@ -58,6 +58,7 @@ Molecules and reactive species are both initialized as the Fragment object (base
 
 #### Molecules
 
+Let us initialize a molecule of dimethyl ether (DME):
 
 ```python
 f = Fragment(smile = 'COC', to_initialize = 5)

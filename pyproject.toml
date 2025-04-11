@@ -22,5 +22,6 @@ classifiers = [
 ]
 dependencies = [
     "ase>=3.24.0",
-    "rdkit>=2022.9.5"
-
+    "rdkit>=2022.9.5",
+    "pandas"
+]

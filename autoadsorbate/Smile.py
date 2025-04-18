@@ -4,17 +4,23 @@ from typing import List, Tuple
 
 import numpy as np
 
-from ase import Atom, Atoms
-from ase.io import write, read
+from ase import Atoms
+from ase.io import read
 
 from rdkit import Chem
-from rdkit.Chem import AllChem, Draw, rdDistGeom
-from rdkit.Chem.rdForceFieldHelpers import OptimizeMoleculeConfs, MMFFGetMoleculeForceField, MMFFGetMoleculeProperties 
+from rdkit.Chem import AllChem, rdDistGeom
+from rdkit.Chem.rdForceFieldHelpers import (
+    OptimizeMoleculeConfs,
+    MMFFGetMoleculeForceField,
+    MMFFGetMoleculeProperties,
+)
 
 from .utils import rotation_matrix_from_vectors
 
 
-def conformers_from_smile(smiles: str, conformer_count: int = 10, random_seed: int = 0xf00d) -> List[Atoms]:
+def conformers_from_smile(
+    smiles: str, conformer_count: int = 10, random_seed: int = 0xF00D
+) -> List[Atoms]:
     """
     Generates conformers from a SMILES string.
 
@@ -29,7 +35,9 @@ def conformers_from_smile(smiles: str, conformer_count: int = 10, random_seed: i
     naked_mol = Chem.MolFromSmiles(smiles)
     mol = Chem.AddHs(naked_mol)
 
-    rdDistGeom.EmbedMultipleConfs(mol, conformer_count, randomSeed=random_seed)  # Generate conformer_count conformers
+    rdDistGeom.EmbedMultipleConfs(
+        mol, conformer_count, randomSeed=random_seed
+    )  # Generate conformer_count conformers
 
     conformer_trj = []
     for conf_id in range(conformer_count):
@@ -42,7 +50,9 @@ def conformers_from_smile(smiles: str, conformer_count: int = 10, random_seed: i
     return conformer_trj
 
 
-def NEW_create_adsorbates(smiles_list: List[str] = ['ClH'], conformations_per_smiles: int = 10) -> List[Atoms]:
+def NEW_create_adsorbates(
+    smiles_list: List[str] = ["ClH"], conformations_per_smiles: int = 10
+) -> List[Atoms]:
     """
     Generates adsorbates from a list of SMILES strings.
 
@@ -56,17 +66,19 @@ def NEW_create_adsorbates(smiles_list: List[str] = ['ClH'], conformations_per_sm
     trj = []
 
     for smiles in smiles_list:
-        if smiles == 'ClH':
-            trj.append(Atoms(['Cl', 'H'], [[0, 0, 0], [0, 0, 1.5]]))
+        if smiles == "ClH":
+            trj.append(Atoms(["Cl", "H"], [[0, 0, 0], [0, 0, 1.5]]))
             continue
 
         if check_smile(smiles):
-            conformer_trj = conformers_from_smile(smiles, conformer_count=conformations_per_smiles)
+            conformer_trj = conformers_from_smile(
+                smiles, conformer_count=conformations_per_smiles
+            )
 
             for atoms in conformer_trj:
                 atoms = _reset_rotation(atoms)
 
-                if atoms[0].symbol == 'S':
+                if atoms[0].symbol == "S":
                     slide = atoms[1].position - atoms[0].position
                     atoms.positions = atoms.positions - slide * 0.5
 
@@ -89,12 +101,14 @@ def sort_smiles(smiles_list: List[str]) -> Tuple[List[str], List[str]]:
     nontop_smiles = []
 
     for s in smiles_list:
-        if s.startswith('Cl'):
+        if s.startswith("Cl"):
             top_smiles.append(s)
-        elif s.startswith('S1S'):
+        elif s.startswith("S1S"):
             nontop_smiles.append(s)
         else:
-            raise ValueError(f'SMILES: {s} in smiles_list must be a marked SMILES (starting with S1S or Cl).')
+            raise ValueError(
+                f"SMILES: {s} in smiles_list must be a marked SMILES (starting with S1S or Cl)."
+            )
 
     return top_smiles, nontop_smiles
 
@@ -118,8 +132,8 @@ def atoms_from_smile(smiles: str) -> Atoms:
     ff = MMFFGetMoleculeForceField(m2, mprop)
     E_cff = OptimizeMoleculeConfs(m2, ff)[0][1]
 
-    with NamedTemporaryFile(suffix='.xyz') as tmp_file:
-        print(Chem.MolToXYZBlock(m2), file=open(tmp_file.name, 'w'))
+    with NamedTemporaryFile(suffix=".xyz") as tmp_file:
+        print(Chem.MolToXYZBlock(m2), file=open(tmp_file.name, "w"))
         atoms = read(tmp_file.name)
 
     atoms.pbc = [True, True, True]
@@ -129,7 +143,13 @@ def atoms_from_smile(smiles: str) -> Atoms:
     return atoms
 
 
-def create_adsorbates(smiles: str = 'ClH', dist: float = 1.1, check_dist: bool = True, conf_no: int = 10, max_tries: int = 20) -> List[Atoms]:
+def create_adsorbates(
+    smiles: str = "ClH",
+    dist: float = 1.1,
+    check_dist: bool = True,
+    conf_no: int = 10,
+    max_tries: int = 20,
+) -> List[Atoms]:
     """
     Generates adsorbates from a SMILES string.
 
@@ -153,29 +173,31 @@ def create_adsorbates(smiles: str = 'ClH', dist: float = 1.1, check_dist: bool =
         n = 1
         while min_distance < dist:
             atoms = atoms_from_smile(smiles)
-            
+
             if check_dist:
                 min_distance = get_closest_atom(atoms)
             else:
                 min_distance, dist = 100, 99  # large number to keep all configs
 
             if n % 5 == 0:
-                print(f'Tried {n}, min_distance {min_distance}')
+                print(f"Tried {n}, min_distance {min_distance}")
             n += 1
             if n > max_tries:
-                print(f'Failed to find configuration in {max_tries} steps')
+                print(f"Failed to find configuration in {max_tries} steps")
                 break
             if min_distance > dist:
-                atoms.info['smile'] = smiles
+                atoms.info["smile"] = smiles
                 atoms = _reset_rotation(atoms)
-                
-                if atoms[0].symbol == 'S':
+
+                if atoms[0].symbol == "S":
                     slide = atoms[1].position - atoms[0].position
                     atoms.positions -= slide * 0.5
                 trj.append(atoms)
 
-        print(f'{smiles} found {len(trj)} out of {conf_no} configurations that are {round(min_distance, 3)} Å far from the defect plane')
-                
+        print(
+            f"{smiles} found {len(trj)} out of {conf_no} configurations that are {round(min_distance, 3)} Å far from the defect plane"
+        )
+
     return trj
 
 
@@ -192,13 +214,16 @@ def get_nvector(atoms: Atoms) -> np.ndarray:
     atom1 = atoms[0]  # first atom
     atom2 = atoms[1]  # second atom
 
-    if atom1.symbol == 'Cl':
+    if atom1.symbol == "Cl":
         nvector = atom2.position - atom1.position
-    elif atom1.symbol == 'S' and atom2.symbol == 'S':
+    elif atom1.symbol == "S" and atom2.symbol == "S":
         # Compute normal vector to S-S "defect marker"
         nvector = np.cross(
-            np.cross(atom1.position - atom2.position, atoms.get_center_of_mass() - (atom1.position - atom2.position)),
-            atom1.position - atom2.position
+            np.cross(
+                atom1.position - atom2.position,
+                atoms.get_center_of_mass() - (atom1.position - atom2.position),
+            ),
+            atom1.position - atom2.position,
         )
         nvector = nvector / -np.linalg.norm(nvector)
     else:
@@ -219,12 +244,14 @@ def get_closest_atom(atoms: Atoms) -> float:
     """
     from sympy import Plane, Point3D
 
-    if atoms[0].symbol == 'S':
+    if atoms[0].symbol == "S":
         first_molecule_atom_index = 2
-    elif atoms[0].symbol == 'Cl':
+    elif atoms[0].symbol == "Cl":
         first_molecule_atom_index = 1
     else:
-        raise ValueError("Molecule must be formatted to start with a marker (Cl or S1S).")
+        raise ValueError(
+            "Molecule must be formatted to start with a marker (Cl or S1S)."
+        )
 
     nvector = get_nvector(atoms)
     point = tuple(atoms[0].position)
@@ -314,27 +341,27 @@ def align_to_xz(atoms: Atoms) -> Atoms:
     Returns:
         Atoms: The aligned ASE Atoms object.
     """
-    if atoms[0].symbol == 'Cl':
+    if atoms[0].symbol == "Cl":
         return atoms
 
-    if atoms[0].symbol == 'S' and atoms[1].symbol == 'S':
+    if atoms[0].symbol == "S" and atoms[1].symbol == "S":
         angle = 0
         cms = atoms.get_center_of_mass()
-        
+
         while abs(atoms[1].position[1]) > 0.01 or np.sign(atoms[1].position[1]) != 1:
             atoms.rotate(angle, [0, 0, 1], center=atoms[0].position, rotate_cell=False)
             angle += 0.01
-        
+
         angle = 0
         while abs(cms[1]) > 0.01 or np.sign(cms[2]) != 1:
             atoms.rotate(angle, [1, 0, 0], center=atoms[0].position, rotate_cell=False)
             angle += 0.01
             cms = atoms.get_center_of_mass()
-        
+
         if cms[0] < 0:
-        # if atoms[1].position[0] < 0:
+            # if atoms[1].position[0] < 0:
             atoms.rotate(180, [0, 0, 1], center=atoms[0].position, rotate_cell=False)
-    
+
     return atoms
 
 
@@ -393,18 +420,18 @@ def check_smile(smiles: str) -> bool:
         val1 = m2.GetAtoms()[1].GetExplicitValence()
         atom0_symbol = m2.GetAtoms()[0].GetSymbol()
         atom1_symbol = m2.GetAtoms()[1].GetSymbol()
-        
-        if atom0_symbol == 'Cl' and val0 > 1:
+
+        if atom0_symbol == "Cl" and val0 > 1:
             proceed = False
-        if atom0_symbol == 'S' and val0 > 2:
+        if atom0_symbol == "S" and val0 > 2:
             proceed = False
-        if atom1_symbol == 'S' and val1 > 2:
+        if atom1_symbol == "S" and val1 > 2:
             proceed = False
 
     except Exception as e:
-        print(f'Failed to check SMILES {smiles}: {e}')
+        print(f"Failed to check SMILES {smiles}: {e}")
         proceed = False
-    
+
     return proceed
 
 
@@ -423,7 +450,7 @@ def rotate_mol_to_hvector(atoms: Atoms, site: np.ndarray, mol: Atoms) -> Atoms:
     m = mol.copy()
     hvector = get_hvector(atoms, site)
     angle = np.arccos(hvector[0]) / np.pi * 180  # Convert radians to degrees
-    m.rotate('z', angle)
+    m.rotate("z", angle)
     return m
 
 
@@ -454,14 +481,14 @@ def rearrange_first_double_bond(smile: str) -> str:
         str: The rearranged SMILES string.
     """
     out_smile = smile
-    if smile[1] in ['=', '#']:
+    if smile[1] in ["=", "#"]:
         sm_list = _parse_smile(smile)
-        out_smile = sm_list[2] + '(' + smile[1] + smile[0] + ')'
+        out_smile = sm_list[2] + "(" + smile[1] + smile[0] + ")"
         for s in sm_list[3:]:
             out_smile += s
-    if smile[0] in ['O'] and smile[1] not in ['=', '#']:
+    if smile[0] in ["O"] and smile[1] not in ["=", "#"]:
         sm_list = _parse_smile(smile)
-        out_smile = sm_list[1] + '(' + smile[0] + ')'
+        out_smile = sm_list[1] + "(" + smile[0] + ")"
         for s in sm_list[2:]:
             out_smile += s
     return out_smile
@@ -477,11 +504,11 @@ def rearrange_last_double_bond(smile: str) -> str:
     Returns:
         str: The rearranged SMILES string.
     """
-    if smile[-2] in ['=', '#']:
-        smile = smile[:-2] + '(' + smile[-2] + smile[-1] + ')'
-    if smile[-1] in ['O'] and smile[-2] not in ['=', '#']:
-        smile = smile[:-1] + '(' + smile[-1] + ')'
-    
+    if smile[-2] in ["=", "#"]:
+        smile = smile[:-2] + "(" + smile[-2] + smile[-1] + ")"
+    if smile[-1] in ["O"] and smile[-2] not in ["=", "#"]:
+        smile = smile[:-1] + "(" + smile[-1] + ")"
+
     return smile
 
 
@@ -511,8 +538,8 @@ def get_keep_together(smile: str) -> List[Tuple[int, int]]:
         List[Tuple[int, int]]: A list of tuples, each containing the start and end indices of characters that should remain together.
     """
     motifs = {
-        '()': r"\(([A-Za-z0-9_=\+\-\*]+)\)",  # Matches content within parentheses
-        '[]': r"\[([A-Za-z0-9_=\+\-\*]+)\]",  # Matches content within square brackets
+        "()": r"\(([A-Za-z0-9_=\+\-\*]+)\)",  # Matches content within parentheses
+        "[]": r"\[([A-Za-z0-9_=\+\-\*]+)\]",  # Matches content within square brackets
     }
 
     keep_together = []
@@ -538,7 +565,7 @@ def get_biatomic(smile: str) -> List[Tuple[int, int]]:
     keep_together = []
     for motif in get_bce():
         for i in re.finditer(motif, smile):
-            if smile[i.start() - 1] != '(' and smile[i.end()] != ')':
+            if smile[i.start() - 1] != "(" and smile[i.end()] != ")":
                 keep_together.append((i.start(), i.end()))
     return keep_together
 
@@ -571,7 +598,7 @@ def get_group_logical(smile: str) -> List[Tuple[int, int]]:
     ls = list(zip(l1, l2))
 
     for i, pair in enumerate(ls):
-        if smile[pair[0]] == '(':
+        if smile[pair[0]] == "(":
             ls[i] = (pair[0] - 1, pair[1])
 
     return ls
@@ -622,7 +649,7 @@ def parse_smile(smile: str) -> List[str]:
     """
     smile = rearrange_edge_double_bonds(smile)
     smile_parsed = _parse_smile(smile)
-    
+
     previous = None
     parsed_corrected_for_rings = []
 
@@ -637,7 +664,7 @@ def parse_smile(smile: str) -> List[str]:
         previous = s
 
     return parsed_corrected_for_rings
-    
+
 
 def _parse_smile(smile: str) -> List[str]:
     """
@@ -652,8 +679,8 @@ def _parse_smile(smile: str) -> List[str]:
     parsed_smile = []
     parsed_tup = get_parsed_tup(smile)
     for i in parsed_tup:
-        parsed_smile.append(smile[i[0]:i[-1]])
-    
+        parsed_smile.append(smile[i[0] : i[-1]])
+
     return parsed_smile
 
 
@@ -668,10 +695,10 @@ def reformat_smile(smile: str) -> str:
         str: The reformatted SMILES string.
     """
     happy_smile = parse_smile(smile)
-    reformatted_smile = ''.join(happy_smile)
+    reformatted_smile = "".join(happy_smile)
     return reformatted_smile
 
-    
+
 def flip_smile(smile: str) -> str:
     """
     Flips a SMILES string by reversing the order of its parsed components.
@@ -683,7 +710,7 @@ def flip_smile(smile: str) -> str:
         str: The flipped SMILES string.
     """
     happy_smile = parse_smile(smile)
-    sad_smile = ''.join(happy_smile[::-1])
+    sad_smile = "".join(happy_smile[::-1])
     return sad_smile
 
 
@@ -701,24 +728,25 @@ def attack_backbone(smile: str, backbone_index: int, atom_target: str) -> List[s
     """
     normal_list = parse_smile(smile)
     backbone_target = normal_list[backbone_index]
-        
+
     if atom_target not in backbone_target:
-        print(f'Targeted atom: {atom_target}, not found in target: {backbone_target}')
+        print(f"Targeted atom: {atom_target}, not found in target: {backbone_target}")
         return []
-    
+
     rearranged_list = [backbone_target]
-    
+
     if normal_list[0:backbone_index]:
-        rearranged_list.append('(')
+        rearranged_list.append("(")
         rearranged_list.extend(normal_list[0:backbone_index][::-1])
-        rearranged_list.append(')')
-            
-    if normal_list[backbone_index+1:]:
-        rearranged_list.append('(')
-        rearranged_list.extend(normal_list[backbone_index+1:])
-        rearranged_list.append(')')
+        rearranged_list.append(")")
+
+    if normal_list[backbone_index + 1 :]:
+        rearranged_list.append("(")
+        rearranged_list.extend(normal_list[backbone_index + 1 :])
+        rearranged_list.append(")")
 
     return rearranged_list
+
 
 def get_reformated_target(site: str) -> List[str]:
     """
@@ -733,44 +761,48 @@ def get_reformated_target(site: str) -> List[str]:
     hacked_site_list = []
     for i, j in get_keep_together(site):
         marker = site[i:j]
-        
-        special_case_offset = 0
-        swap_marker = ''
 
-        if marker == '(O)':
-            swap_marker = 'Cl[OH+]'
-        elif marker == '(=O)':
-            swap_marker = 'Cl[O+]='
-        elif site[i-1:j] == 'N(C)':
-            swap_marker = 'Cl[N+](C)'
+        special_case_offset = 0
+        swap_marker = ""
+
+        if marker == "(O)":
+            swap_marker = "Cl[OH+]"
+        elif marker == "(=O)":
+            swap_marker = "Cl[O+]="
+        elif site[i - 1 : j] == "N(C)":
+            swap_marker = "Cl[N+](C)"
             special_case_offset = 1
 
         new_site_list = [marker] + site.split(marker)
 
-        check_len_site = ''.join(new_site_list)
+        check_len_site = "".join(new_site_list)
 
         while len(check_len_site) < len(site):
             check_len_site += marker
 
-        hacked_site = swap_marker + check_len_site[len(marker) + special_case_offset:]
+        hacked_site = swap_marker + check_len_site[len(marker) + special_case_offset :]
         hacked_site_list.append(hacked_site)
-    
+
     hacked_site_list = list(set(hacked_site_list))
-    
-    if site == 'O':
-        hacked_site_list.append('Cl[O+]')
-    elif site == 'N':
-        hacked_site_list.append('Cl[N+]')
-    elif site == 'N1':
-        hacked_site_list.append('Cl[N+]1')
-        
+
+    if site == "O":
+        hacked_site_list.append("Cl[O+]")
+    elif site == "N":
+        hacked_site_list.append("Cl[N+]")
+    elif site == "N1":
+        hacked_site_list.append("Cl[N+]1")
+
     return hacked_site_list
 
 
-def get_marked_smiles(smiles_list: List[str], attack_atoms: List[str] = ['O', 'N'], print_output: bool = False) -> List[str]:
+def get_marked_smiles(
+    smiles_list: List[str],
+    attack_atoms: List[str] = ["O", "N"],
+    print_output: bool = False,
+) -> List[str]:
     """
     Given a list of SMILES strings of isolated molecules, returns reformatted SMILES strings of equivalent molecules
-    with coordination sites marked with Cl. The marked SMILES are returned as a list. 
+    with coordination sites marked with Cl. The marked SMILES are returned as a list.
     Target atoms supported are O and N.
 
     Args:
@@ -802,7 +834,7 @@ def get_marked_smiles(smiles_list: List[str], attack_atoms: List[str] = ['O', 'N
                     print(heads)
 
                 for head in heads:
-                    out_smile = head + ''.join(site_ls[1:])
+                    out_smile = head + "".join(site_ls[1:])
                     out_smiles.append(out_smile)
 
         if print_output:
@@ -811,7 +843,7 @@ def get_marked_smiles(smiles_list: List[str], attack_atoms: List[str] = ['O', 'N
     return out_smiles
 
 
-def insert_in_str(string: str, insert_str: str = '', pos: int = 0) -> str:
+def insert_in_str(string: str, insert_str: str = "", pos: int = 0) -> str:
     """
     Inserts a string at a specific position in another string.
 
@@ -825,7 +857,7 @@ def insert_in_str(string: str, insert_str: str = '', pos: int = 0) -> str:
     """
     return string[:pos] + insert_str + string[pos:]
 
-    
+
 def drop_motif(string: str, motif: str) -> List[str]:
     """
     Removes all instances of a specific motif from a string and returns a list of all possibilities.
@@ -839,17 +871,17 @@ def drop_motif(string: str, motif: str) -> List[str]:
     """
     return_strings = []
     splits = string.split(motif)
-    
+
     ssplits = []
     for s in splits:
         ssplits.append(s)
         ssplits.append(motif)
     del ssplits[-1]
-        
+
     for i, s in enumerate(ssplits):
         if s == motif:
-            return_strings.append(''.join(ssplits[:i] + ssplits[i+1:]))
-    
+            return_strings.append("".join(ssplits[:i] + ssplits[i + 1 :]))
+
     return return_strings
 
 
@@ -867,13 +899,13 @@ def remove_canonical_duplicates(smile_list: List[str]) -> List[str]:
 
     c_smiles = []
     unique_list = []
-    
+
     for s in smile_list:
         m = Chem.MolFromSmiles(s)
         c_smile = rdMolHash.MolHash(m, rdMolHash.HashFunction.CanonicalSmiles)
-        
+
         if c_smile not in c_smiles:
             unique_list.append(s)
             c_smiles.append(c_smile)
-            
+
     return unique_list

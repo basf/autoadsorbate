@@ -1,18 +1,26 @@
 """Main module."""
+
 from typing import List, Dict
 
 import numpy as np
 import pandas as pd
-import itertools
 
 from ase import Atoms, Atom
 from ase.visualize import view
 
 import ase
 
-from .Smile import conformers_from_smile, _reset_rotation, _reset_position, align_to_vector
+from .Smile import (
+    conformers_from_smile,
+    _reset_rotation,
+    _reset_position,
+)
 from .Surf import get_shrinkwrap_ads_sites, conformer_to_site
-from .utils import random_rotate, snap_pos_compare, get_sorted_by_snap_dist, make_site_info_writable
+from .utils import (
+    get_sorted_by_snap_dist,
+    make_site_info_writable,
+)
+
 
 class Intermediate:
     """
@@ -33,7 +41,7 @@ class Intermediate:
         """
         self.ActiveSite = ActiveSite
         self.fragments = fragments if fragments is not None else []
-    
+
 
 class Fragment:
     """
@@ -47,7 +55,13 @@ class Fragment:
         conformers_aligned (List[bool]): A list indicating whether each conformer is aligned.
     """
 
-    def __init__(self, smile: str, to_initialize: int = 10, random_seed: int = 2104, sort_conformers: bool = True):
+    def __init__(
+        self,
+        smile: str,
+        to_initialize: int = 10,
+        random_seed: int = 2104,
+        sort_conformers: bool = True,
+    ):
         """
         Initialize attributes.
 
@@ -60,16 +74,19 @@ class Fragment:
         self.smile = smile
         self.to_initialize = to_initialize
         self.randomSeed = random_seed
- 
-        self.conformers = conformers_from_smile(smile, to_initialize, random_seed=random_seed)
+
+        self.conformers = conformers_from_smile(
+            smile, to_initialize, random_seed=random_seed
+        )
         self.conformers_aligned = [False for _ in self.conformers]
 
         self.sort_conformers = sort_conformers
         if self.sort_conformers:
             self.conformers = get_sorted_by_snap_dist(self.conformers)
-        
-    
-    def get_conformer(self, i: int, n_vector: np.ndarray = np.array([0, 0, 1]), rot_deg: float = 0) -> Atoms:
+
+    def get_conformer(
+        self, i: int, n_vector: np.ndarray = np.array([0, 0, 1]), rot_deg: float = 0
+    ) -> Atoms:
         """
         Returns a copy of the i-th conformer, aligned and rotated as specified.
 
@@ -85,9 +102,9 @@ class Fragment:
             self.conformers[i] = _reset_position(self.conformers[i])
             self.conformers[i] = _reset_rotation(self.conformers[i])
             self.conformers_aligned[i] = True
-        
+
         self.conformers[i].rotate(rot_deg, n_vector)
-        self.conformers[i].info['smiles'] = self.smile
+        self.conformers[i].info["smiles"] = self.smile
         return self.conformers[i].copy()
 
     def view(self, return_traj=False):
@@ -96,7 +113,6 @@ class Fragment:
             return traj
         view(traj)
 
-        
 
 class Surface:
     """
@@ -110,7 +126,13 @@ class Surface:
         site_df (pd.DataFrame): DataFrame containing site information.
     """
 
-    def __init__(self, atoms: Atoms, precision: float = 0.25, touch_sphere_size: float = 3, dummy: bool = False):
+    def __init__(
+        self,
+        atoms: Atoms,
+        precision: float = 0.25,
+        touch_sphere_size: float = 3,
+        dummy: bool = False,
+    ):
         """
         Initialize attributes.
 
@@ -124,33 +146,43 @@ class Surface:
         self.precision = precision
         self.touch_sphere_size = touch_sphere_size
         if self.dummy:
-            self.site_dict={}
+            self.site_dict = {}
             self.site_df = pd.DataFrame(self.site_dict)
         else:
-            self.site_dict = get_shrinkwrap_ads_sites(atoms=self.atoms, precision=self.precision, touch_sphere_size=self.touch_sphere_size)
+            self.site_dict = get_shrinkwrap_ads_sites(
+                atoms=self.atoms,
+                precision=self.precision,
+                touch_sphere_size=self.touch_sphere_size,
+            )
             self.site_df = pd.DataFrame(self.site_dict)
             self.sort_site_df()
 
-    def sort_site_df(self, by: str = 'xyz'):
+    def sort_site_df(self, by: str = "xyz"):
         """
         Sorts the site DataFrame by coordinates or distance.
 
         Args:
             by (str, optional): The sorting criterion ('xyz' or 'dist'). Defaults to 'xyz'.
         """
-        if by == 'xyz':
+        if by == "xyz":
             sort = {}
             for c in [0, 1, 2]:
-                sort[f'sort_{c}'] = [np.round(coord[c], 1) for coord in self.site_df.coordinates]
+                sort[f"sort_{c}"] = [
+                    np.round(coord[c], 1) for coord in self.site_df.coordinates
+                ]
             for k, v in sort.items():
                 self.site_df[k] = v
-            self.site_df = self.site_df.sort_values(by=list(sort.keys()), ignore_index=True)
+            self.site_df = self.site_df.sort_values(
+                by=list(sort.keys()), ignore_index=True
+            )
             for k in sort.keys():
                 self.site_df.pop(k)
-        elif by == 'dist':
-            self.site_df['sort'] = [np.round(np.linalg.norm(coord), 1) for coord in self.site_df.coordinates]
-            self.site_df = self.site_df.sort_values(by='sort', ignore_index=True)
-            self.site_df.pop('sort')
+        elif by == "dist":
+            self.site_df["sort"] = [
+                np.round(np.linalg.norm(coord), 1) for coord in self.site_df.coordinates
+            ]
+            self.site_df = self.site_df.sort_values(by="sort", ignore_index=True)
+            self.site_df.pop("sort")
 
     def get_site(self, index: int) -> Atoms:
         """
@@ -164,12 +196,12 @@ class Surface:
         """
         site_atoms = self.atoms.copy()
 
-        if 'adsorbate_info' in site_atoms.info.keys():
-            site_atoms.info.pop('adsorbate_info')
-        
+        if "adsorbate_info" in site_atoms.info.keys():
+            site_atoms.info.pop("adsorbate_info")
+
         info = self.site_df.loc[index].to_dict()
         site_atoms.info.update(info)
-        site_atoms.append(Atom('X', position=self.site_df['coordinates'].loc[index]))
+        site_atoms.append(Atom("X", position=self.site_df["coordinates"].loc[index]))
         del site_atoms[:-1]
         return site_atoms
 
@@ -185,15 +217,26 @@ class Surface:
             Atoms: The ASE Atoms object for the site if return_atoms is True.
         """
         site_atoms = self.get_site(index)
-        site_atoms += self.atoms[site_atoms.info['topology']]
+        site_atoms += self.atoms[site_atoms.info["topology"]]
         for x in [np.round(x, 1) for x in np.arange(0.1, 2.1, 0.1)]:
-            site_atoms.append(Atom('X', position=site_atoms.info['coordinates'] + site_atoms.info['n_vector'] * x))
+            site_atoms.append(
+                Atom(
+                    "X",
+                    position=site_atoms.info["coordinates"]
+                    + site_atoms.info["n_vector"] * x,
+                )
+            )
         if return_atoms:
             return site_atoms
         else:
             view(site_atoms)
 
-    def view_surface(self, return_atoms: bool = False, explicit_marker: str = None, mode: str = 'normal') -> Atoms:
+    def view_surface(
+        self,
+        return_atoms: bool = False,
+        explicit_marker: str = None,
+        mode: str = "normal",
+    ) -> Atoms:
         """
         Visualizes the entire surface.
 
@@ -206,8 +249,7 @@ class Surface:
             Atoms: The ASE Atoms object for the surface if return_atoms is True.
         """
         view_atoms = self.atoms.copy()
-        inds = list(set([i for ind_ls in self.site_dict['topology'] for i in ind_ls]))
-
+        inds = list(set([i for ind_ls in self.site_dict["topology"] for i in ind_ls]))
 
         if explicit_marker:
             for i in inds:
@@ -217,9 +259,15 @@ class Surface:
             for i in inds:
                 view_atoms[i].number = marker_map[view_atoms[i].number]
 
-        if mode == 'hedgehog':
+        if mode == "hedgehog":
             for i in self.site_df.index.values:
-                view_atoms += self.view_site(i, return_atoms=True)[[atom.index for atom in self.view_site(i, return_atoms=True) if atom.symbol =='X']]
+                view_atoms += self.view_site(i, return_atoms=True)[
+                    [
+                        atom.index
+                        for atom in self.view_site(i, return_atoms=True)
+                        if atom.symbol == "X"
+                    ]
+                ]
         if return_atoms:
             return view_atoms
         else:
@@ -276,18 +324,18 @@ class Surface:
         include = self.get_nonequivalent_sites()
         include_filter = [i in include for i in self.site_df.index.values]
         self.site_df = self.site_df[include_filter]
-        self.site_dict = self.site_df.to_dict(orient='list')
+        self.site_dict = self.site_df.to_dict(orient="list")
 
     def get_populated_sites(
-            self,
-            fragment,
-            site_index = 'all',
-            sample_rotation = True,
-            mode = 'heuristic',
-            conformers_per_site_cap = None,
-            overlap_thr = 1.5,
-            verbose=False
-            ):
+        self,
+        fragment,
+        site_index="all",
+        sample_rotation=True,
+        mode="heuristic",
+        conformers_per_site_cap=None,
+        overlap_thr=1.5,
+        verbose=False,
+    ):
         """
         Populates the specified sites with the given fragment, optimizing the orientation to minimize overlap.
 
@@ -306,80 +354,99 @@ class Surface:
         Raises:
         ValueError: If the mode is not implemented or if the fragment object is invalid.
         """
-        
+
         all_sites = {}
         site_df = self.site_df
-        
-        if mode.lower() == 'all':
-            sites = [site_df.loc[i].to_dict() for i in site_df.index.values] 
-        
-        elif mode.lower() == 'heuristic':
-            all_sites['S1S'] = [site_df.loc[i].to_dict() for i in site_df[site_df.connectivity>1].index.values] 
-            all_sites['Cl'] = [site_df.loc[i].to_dict() for i in site_df[site_df.connectivity==1].index.values] 
-            
-            if fragment.smile[:3] == 'S1S':
-                sites = all_sites['S1S']
-    
-            if fragment.smile[:2] == 'Cl':
-                sites = all_sites['Cl']
-        
+
+        if mode.lower() == "all":
+            sites = [site_df.loc[i].to_dict() for i in site_df.index.values]
+
+        elif mode.lower() == "heuristic":
+            all_sites["S1S"] = [
+                site_df.loc[i].to_dict()
+                for i in site_df[site_df.connectivity > 1].index.values
+            ]
+            all_sites["Cl"] = [
+                site_df.loc[i].to_dict()
+                for i in site_df[site_df.connectivity == 1].index.values
+            ]
+
+            if fragment.smile[:3] == "S1S":
+                sites = all_sites["S1S"]
+
+            if fragment.smile[:2] == "Cl":
+                sites = all_sites["Cl"]
+
         else:
             raise ValueError("argument 'mode' can be 'heuristic' or 'all'")
             return
-    
+
         if sample_rotation:
             conformers = []
             for i, _ in enumerate(fragment.conformers):
                 c = fragment.get_conformer(i)
-                if c.info['smiles'][:3] == 'S1S':
-                    angles = [0,180]
-                if c.info['smiles'][:2] == 'Cl':
+                if c.info["smiles"][:3] == "S1S":
+                    angles = [0, 180]
+                if c.info["smiles"][:2] == "Cl":
                     angles = [a for a in range(0, 360, 45)]
                 for a in angles:
                     ca = c.copy()
-                    ca.rotate(a, 'z')
+                    ca.rotate(a, "z")
                     conformers.append(ca)
         else:
             conformers = [c.copy() for c in fragment.conformers]
-    
+
         out_trj = []
 
         if verbose:
-            print('conformers', len(conformers))
-            print('sites', len(sites))
+            print("conformers", len(conformers))
+            print("sites", len(sites))
 
         for site in sites:
             c_trj = []
             for conformer in conformers:
-                c_trj += conformer_to_site(self.atoms, site, conformer, mode='optimize', overlap_thr=0) #the zero is intentional
+                c_trj += conformer_to_site(
+                    self.atoms, site, conformer, mode="optimize", overlap_thr=0
+                )  # the zero is intentional
 
             if conformers_per_site_cap != None:
-                c_trj  = [atoms for atoms in c_trj if atoms.info['mdf'] > overlap_thr]
+                c_trj = [atoms for atoms in c_trj if atoms.info["mdf"] > overlap_thr]
 
                 if len(c_trj) > 1:
-                    c_trj = get_sorted_by_snap_dist(c_trj)[:int(np.min([conformers_per_site_cap, len(c_trj)]))]
+                    c_trj = get_sorted_by_snap_dist(c_trj)[
+                        : int(np.min([conformers_per_site_cap, len(c_trj)]))
+                    ]
                 elif len(c_trj) == 0:
                     c_trj = []
                 else:
                     pass
 
                 if len(c_trj) < conformers_per_site_cap and verbose:
-                    print(f'WARNING: Failed to find requested number of conformers with condition: ovelap_thr = {overlap_thr}. Found {len(c_trj)} / {conformers_per_site_cap}. Consider setting a higher Fragment(to_initialize = < N >)')
+                    print(
+                        f"WARNING: Failed to find requested number of conformers with condition: ovelap_thr = {overlap_thr}. Found {len(c_trj)} / {conformers_per_site_cap}. Consider setting a higher Fragment(to_initialize = < N >)"
+                    )
                 if len(c_trj) == conformers_per_site_cap and verbose:
-                    print(f'SUCCESS! Found the requested numer of conformers with condition: ovelap_thr = {overlap_thr}. Found {len(c_trj)} / {conformers_per_site_cap}.')
-
+                    print(
+                        f"SUCCESS! Found the requested numer of conformers with condition: ovelap_thr = {overlap_thr}. Found {len(c_trj)} / {conformers_per_site_cap}."
+                    )
 
                 for atoms in c_trj:
-                    atoms.info['adsorbate_info'] = {}
-                    atoms.info['adsorbate_info']['site'] = make_site_info_writable(site)
-                    atoms.info['adsorbate_info']['smiles'] = fragment.smile
-                    atoms.info['adsorbate_info']['mdf'] = atoms.info.pop('mdf')
-                    formula = atoms[[atom.index for atom in atoms if atoms.arrays['fragments'][atom.index] == max(atoms.arrays['fragments'])]].get_chemical_formula()
-                    atoms.info['adsorbate_info']['adsorbate_formula'] = formula
+                    atoms.info["adsorbate_info"] = {}
+                    atoms.info["adsorbate_info"]["site"] = make_site_info_writable(site)
+                    atoms.info["adsorbate_info"]["smiles"] = fragment.smile
+                    atoms.info["adsorbate_info"]["mdf"] = atoms.info.pop("mdf")
+                    formula = atoms[
+                        [
+                            atom.index
+                            for atom in atoms
+                            if atoms.arrays["fragments"][atom.index]
+                            == max(atoms.arrays["fragments"])
+                        ]
+                    ].get_chemical_formula()
+                    atoms.info["adsorbate_info"]["adsorbate_formula"] = formula
 
-                    
                 out_trj += c_trj
-                    
+
         return out_trj
 
 
@@ -406,7 +473,9 @@ def _get_marker_map(atoms: Atoms) -> Dict[int, int]:
         marker_map[atomic_number] = swap_atomic_number
 
     for k, v in marker_map.items():
-        print(f'Visualizing surface {ase.symbols.chemical_symbols[k]} atoms as {ase.symbols.chemical_symbols[v]}')
+        print(
+            f"Visualizing surface {ase.symbols.chemical_symbols[k]} atoms as {ase.symbols.chemical_symbols[v]}"
+        )
         # print(f'Visualizing surface {ase.symbols.symbols([k]).get_chemical_formula()} atoms as {ase.symbols.symbols([v]).get_chemical_formula()}')
     return marker_map
 
@@ -422,7 +491,13 @@ class ActiveSite(Surface):
         keep_tops (bool): Whether to keep top sites.
     """
 
-    def __init__(self, atoms: Atoms, must_include: List[int] = [], must_exclude: List[int] = [], keep_tops: bool = True):
+    def __init__(
+        self,
+        atoms: Atoms,
+        must_include: List[int] = [],
+        must_exclude: List[int] = [],
+        keep_tops: bool = True,
+    ):
         """
         Initialize attributes.
 
@@ -445,10 +520,17 @@ class ActiveSite(Surface):
         if not self.must_include:
             return
 
-        include_filter = np.array([any(i in v for i in self.must_include) for v in self.site_df.topology.values])
+        include_filter = np.array(
+            [
+                any(i in v for i in self.must_include)
+                for v in self.site_df.topology.values
+            ]
+        )
 
         for e in self.must_exclude:
-            include_filter &= np.array([e not in v for v in self.site_df.topology.values])
+            include_filter &= np.array(
+                [e not in v for v in self.site_df.topology.values]
+            )
 
         if self.keep_tops:
             temp_site_df = self.site_df[include_filter]
@@ -459,6 +541,4 @@ class ActiveSite(Surface):
                     include_filter[i] = True
 
         self.site_df = self.site_df[include_filter]
-        self.site_dict = self.site_df.to_dict(orient='list')
-
-
+        self.site_dict = self.site_df.to_dict(orient="list")

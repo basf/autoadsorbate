@@ -1,38 +1,38 @@
-import math
 import itertools
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 import ase
-from ase import units
-from ase import Atom, Atoms
+from ase import Atom
 from ase.optimize import BFGS
-from ase.io import read, write
+from ase.io import read
 from ase.constraints import FixAtoms
 from ase.visualize.plot import plot_atoms
 from ase.build.tools import sort as sort_atoms
 from ase.optimize.minimahopping import MinimaHopping
-from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
-from ase.md import VelocityVerlet
 
 
 def rotation_matrix_from_vectors(vec1, vec2):
-    """ Find the rotation matrix that aligns vec1 to vec2
+    """Find the rotation matrix that aligns vec1 to vec2
     :param vec1: A 3d "source" vector
     :param vec2: A 3d "destination" vector
     :return mat: A transform matrix (3x3) which when applied to vec1, aligns it with vec2.
     """
-    a, b = (vec1 / np.linalg.norm(vec1)).reshape(3), (vec2 / np.linalg.norm(vec2)).reshape(3)
+    a, b = (
+        (vec1 / np.linalg.norm(vec1)).reshape(3),
+        (vec2 / np.linalg.norm(vec2)).reshape(3),
+    )
     v = np.cross(a, b)
     c = np.dot(a, b)
     s = np.linalg.norm(v)
-    if all(a==b):
+    if all(a == b):
         rotation_matrix = np.eye(3)
     else:
         kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
-        rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
+        rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s**2))
     return rotation_matrix
+
 
 def random_three_vector():
     """
@@ -41,14 +41,15 @@ def random_three_vector():
     Returns:
     tuple: A tuple containing the x, y, and z components of the random 3D unit vector.
     """
-    phi = np.random.uniform(0,np.pi*2)
-    costheta = np.random.uniform(-1,1)
+    phi = np.random.uniform(0, np.pi * 2)
+    costheta = np.random.uniform(-1, 1)
 
-    theta = np.arccos( costheta )
-    x = np.sin( theta) * np.cos( phi )
-    y = np.sin( theta) * np.sin( phi )
-    z = np.cos( theta )
-    return (x,y,z)
+    theta = np.arccos(costheta)
+    x = np.sin(theta) * np.cos(phi)
+    y = np.sin(theta) * np.sin(phi)
+    z = np.cos(theta)
+    return (x, y, z)
+
 
 def random_rotate(atoms):
     """
@@ -77,28 +78,31 @@ def get_backbone_bond_change(trj, bond_cutoff=1.6):
     Returns:
     numpy.ndarray: An array representing the changes in backbone bonds.
     """
-    H_count = len(trj[0][[atom.index for atom in trj[0] if atom.symbol =='H']])
-    
+    H_count = len(trj[0][[atom.index for atom in trj[0] if atom.symbol == "H"]])
+
     traj = [trj[0].copy(), trj[-1].copy()]
     a_dict = {}
-    
+
     for i in [0, -1]:
-        traj[i] = traj[i][[atom.index for atom in traj[i] if atom.symbol in ['C', 'O', 'H']]]
-        traj[i]=sort_atoms(traj[i], tags=traj[i].get_atomic_numbers())
-        a_dict[i] = (traj[i].get_all_distances() < bond_cutoff)*1
+        traj[i] = traj[i][
+            [atom.index for atom in traj[i] if atom.symbol in ["C", "O", "H"]]
+        ]
+        traj[i] = sort_atoms(traj[i], tags=traj[i].get_atomic_numbers())
+        a_dict[i] = (traj[i].get_all_distances() < bond_cutoff) * 1
         # a_dict[i] = a_dict[i][H_count:,H_count:] # ignore "H-H" bonds
-        a_dict[i][:H_count,:H_count] = 0 # ignore "H-H" bonds
+        a_dict[i][:H_count, :H_count] = 0  # ignore "H-H" bonds
 
     # print(a_dict.keys())
     a0 = a_dict[0]
     a1 = a_dict[-1]
 
-    a =  a_dict[-1] - a_dict[0]
-    
+    a = a_dict[-1] - a_dict[0]
+
     a = a[np.triu_indices(len(a))]
 
     # return a1,a0
     return sum(abs(a))
+
 
 def read_relax_traj(file, pop_site_info=True):
     """
@@ -111,30 +115,37 @@ def read_relax_traj(file, pop_site_info=True):
     Returns:
     object: The final atomic structure with updated information.
     """
-    traj = read(file, index=':')
+    traj = read(file, index=":")
     if len(traj) == 0:
         atoms = traj
     else:
         atoms = traj[-1]
-        atoms.info['bond_change'] = get_backbone_bond_change(traj)
-        atoms.info['snap_pos_compare'] = snap_pos_compare(traj[0], traj[-1])
+        atoms.info["bond_change"] = get_backbone_bond_change(traj)
+        atoms.info["snap_pos_compare"] = snap_pos_compare(traj[0], traj[-1])
 
-    atoms.info['backbone_formula'] = atoms[[atom.index for atom in atoms if atom.symbol in ['C', 'O']]].get_chemical_formula()
+    atoms.info["backbone_formula"] = atoms[
+        [atom.index for atom in atoms if atom.symbol in ["C", "O"]]
+    ].get_chemical_formula()
     # atoms.info['H_count'] = atoms[[atom.index for atom in atoms if atom.symbol in ['H']]].get_chemical_formula()
-    if 'adsorbate_formula_count' not in atoms.info.keys():
-        atoms.info['adsorbate_formula_count'] = atoms[[atom.index for atom in atoms if atom.symbol in ['C','H', 'O']]].symbols.formula.count()
+    if "adsorbate_formula_count" not in atoms.info.keys():
+        atoms.info["adsorbate_formula_count"] = atoms[
+            [atom.index for atom in atoms if atom.symbol in ["C", "H", "O"]]
+        ].symbols.formula.count()
 
-    adsorbate_formula_count = atoms.info['adsorbate_formula_count']
+    adsorbate_formula_count = atoms.info["adsorbate_formula_count"]
     for k, v in adsorbate_formula_count.items():
         v = int(v)
     atoms.info.update(adsorbate_formula_count)
 
     if pop_site_info:
-        pop_keys = [k for k in atoms.info.keys() if 'ads_' in k] + ['adsorbate_formula_count']
+        pop_keys = [k for k in atoms.info.keys() if "ads_" in k] + [
+            "adsorbate_formula_count"
+        ]
         for k in pop_keys:
             atoms.info.pop(k)
-    
+
     return atoms
+
 
 def read_relax_dir(files):
     """
@@ -148,23 +159,24 @@ def read_relax_dir(files):
         - rdf (pd.DataFrame): A DataFrame with information extracted from the trajectory files.
         - relaxed_traj (list): A list of atomic structures from the trajectory files.
     """
-    files.sort()    
+    files.sort()
     relaxed_traj = []
     rdf = []
-    
+
     for i, file in enumerate(files):
         atoms = read_relax_traj(file)
         relaxed_traj.append(atoms)
-        _a=atoms.copy()
-        info = _a.info.pop('adsorbate_info')
+        _a = atoms.copy()
+        info = _a.info.pop("adsorbate_info")
         info.update(_a.info)
-        info['traj_index'] = i
-#        print(info)
+        info["traj_index"] = i
+        #        print(info)
         rdf.append(info)
-        
+
     rdf = pd.DataFrame(rdf)
-    rdf = rdf.fillna(0.)
+    rdf = rdf.fillna(0.0)
     return rdf, relaxed_traj
+
 
 def compute_energy(df, ref_dict, parent_en_dict):
     """
@@ -178,14 +190,17 @@ def compute_energy(df, ref_dict, parent_en_dict):
     Returns:
     pd.DataFrame: The updated DataFrame with computed energy values.
     """
-    for symbol in ['C', 'H', 'O']:
-        df[f'{symbol}_en'] = [ref_dict[symbol] for i in df.index.values]
-    df['parent_en'] = [parent_en_dict[pid] for pid in df.pid.values]
+    for symbol in ["C", "H", "O"]:
+        df[f"{symbol}_en"] = [ref_dict[symbol] for i in df.index.values]
+    df["parent_en"] = [parent_en_dict[pid] for pid in df.pid.values]
 
-    df['energy'] = df['mlff_energy'] - (
-        df['parent_en'] + df['C'] * df['C_en'] + df['O'] * df['O_en'] + df['H'] * df['H_en']
+    df["energy"] = df["mlff_energy"] - (
+        df["parent_en"]
+        + df["C"] * df["C_en"]
+        + df["O"] * df["O_en"]
+        + df["H"] * df["H_en"]
     )
-    
+
     return df
 
 
@@ -206,24 +221,24 @@ def snap_pos_compare(atoms1, atoms2, sort=True, return_float=None):
         return return_float
 
     d = 0
-    
+
     for symbol in atoms1.symbols.formula.count().keys():
-        
-        a1 = atoms1[[atom.index for atom in atoms1 if atom.symbol == symbol]]        
-        a2 = atoms2[[atom.index for atom in atoms2 if atom.symbol == symbol]]        
+        a1 = atoms1[[atom.index for atom in atoms1 if atom.symbol == symbol]]
+        a2 = atoms2[[atom.index for atom in atoms2 if atom.symbol == symbol]]
         if len(a1) != len(a2):
             return return_float
-            
-        trj = [a1,a2]
-        
+
+        trj = [a1, a2]
+
         for i, _ in enumerate(trj):
-            for j in [0,1,2]:
-                trj[i] = sort_atoms(trj[i], tags= trj[i].positions[:,j])
-                
-        d+=_compare_pos(trj[0].positions, trj[1].positions)
-        
+            for j in [0, 1, 2]:
+                trj[i] = sort_atoms(trj[i], tags=trj[i].positions[:, j])
+
+        d += _compare_pos(trj[0].positions, trj[1].positions)
+
     return d
-    
+
+
 def _compare_pos(pos1, pos2):
     """
     Computes the sum of Euclidean distances between corresponding positions in two arrays.
@@ -237,6 +252,7 @@ def _compare_pos(pos1, pos2):
     """
     return sum(np.linalg.norm(pos1 - pos2, axis=1))
 
+
 def slice_traj_by_formula(traj):
     """
     Slices a trajectory into sub-trajectories based on unique chemical formulas.
@@ -248,13 +264,16 @@ def slice_traj_by_formula(traj):
     list: A list of lists, where each sublist contains atomic structures with the same chemical formula.
     """
     unique_formulas = list(set([atoms.get_chemical_formula() for atoms in traj]))
-    
+
     return_list = []
-    
+
     for formula in unique_formulas:
-        return_list.append([atoms for atoms in traj if atoms.get_chemical_formula() == formula])
-        
+        return_list.append(
+            [atoms for atoms in traj if atoms.get_chemical_formula() == formula]
+        )
+
     return return_list
+
 
 def get_drop_snapped(check_traj, d_cut, verbose=False):
     """
@@ -270,22 +289,23 @@ def get_drop_snapped(check_traj, d_cut, verbose=False):
     """
     snapped_traj = []
     grouping = [0 for atoms in check_traj]
-    
-    n=1
+
+    n = 1
     while (np.array(grouping) == 0).any():
         unset_inds = [g for g, group in enumerate(grouping) if group == 0]
         ref_atoms = check_traj[unset_inds[0]]
         snapped_traj.append(ref_atoms)
-        
+
         for i in unset_inds:
             d = snap_pos_compare(ref_atoms, check_traj[i], return_float=100)
             if d < d_cut:
                 grouping[i] = n
-        n+=1
+        n += 1
         if verbose:
-            print(f'sorted {len(check_traj) - len(unset_inds)} / {len(check_traj)}')
+            print(f"sorted {len(check_traj) - len(unset_inds)} / {len(check_traj)}")
 
     return snapped_traj
+
 
 def count_C_next_to_O(atoms):
     """
@@ -297,17 +317,18 @@ def count_C_next_to_O(atoms):
     Returns:
     int: The number of carbon atoms within 1.6 Å of an oxygen atom. Returns 0 if no oxygen atom is present.
     """
-    if 'O' not in atoms.symbols:
+    if "O" not in atoms.symbols:
         return 0
-        
-    O_index = [atom.index for atom in atoms if atom.symbol =='O'][0]
-    
+
+    O_index = [atom.index for atom in atoms if atom.symbol == "O"][0]
+
     xs = 0
     for atom in atoms:
         dist = atoms.get_distance(O_index, atom.index)
-        if atom.symbol == 'C' and dist < 1.6:
-            xs+=1  
+        if atom.symbol == "C" and dist < 1.6:
+            xs += 1
     return xs
+
 
 def polar2cart(theta, phi, r=1):
     """
@@ -322,10 +343,11 @@ def polar2cart(theta, phi, r=1):
     list: A list containing the x, y, and z Cartesian coordinates.
     """
     return [
-         r * np.sin(theta) * np.cos(phi),
-         r * np.sin(theta) * np.sin(phi),
-         r * np.cos(theta)
+        r * np.sin(theta) * np.cos(phi),
+        r * np.sin(theta) * np.sin(phi),
+        r * np.cos(theta),
     ]
+
 
 def get_sorted_by_snap_dist(traj):
     """
@@ -342,17 +364,17 @@ def get_sorted_by_snap_dist(traj):
     lst = [(atoms, snap_pos_compare(ref_atoms, atoms)) for atoms in traj]
     lst = sorted(lst, key=lambda tup: tup[1])
 
-    slice_index = int(np.floor(len(lst)*0.5))
+    slice_index = int(np.floor(len(lst) * 0.5))
 
     if len(traj) % 2 != 0:
         lst = lst[1:]
 
     a = lst[:slice_index]
-    b = list(reversed(lst[slice_index:]))    
-    lst = list(itertools.chain.from_iterable(zip(a,b)))
+    b = list(reversed(lst[slice_index:]))
+    lst = list(itertools.chain.from_iterable(zip(a, b)))
 
     if len(traj) % 2 != 0:
-        lst = [(ref_atoms, 0.)] + lst
+        lst = [(ref_atoms, 0.0)] + lst
 
     return list(list(zip(*lst))[0])
 
@@ -372,7 +394,8 @@ def make_site_info_writable(site):
             site[k] = list(v)
     return site
 
-def docs_plot_conformers(conformer_trajectory, rotation='-90x,0y,0z'):
+
+def docs_plot_conformers(conformer_trajectory, rotation="-90x,0y,0z"):
     """
     Helper function to plot a series of conformers.
 
@@ -383,18 +406,18 @@ def docs_plot_conformers(conformer_trajectory, rotation='-90x,0y,0z'):
     Returns:
     matplotlib.figure.Figure: The figure object containing the plots.
     """
-    fig, ax = plt.subplots(1,5, figsize=(10,2), sharex=True, sharey=True)
-    
+    fig, ax = plt.subplots(1, 5, figsize=(10, 2), sharex=True, sharey=True)
+
     for i, atoms in enumerate(ax):
         plot_atoms(conformer_trajectory[i], ax=ax[i], rotation=rotation)
         ax[i].set_xlim(0, 7), ax[i].set_ylim(0, 7)
         ax[i].set_axis_off()
-    fig.suptitle('Generated structures viewed from +X axis', fontsize=12)
+    fig.suptitle("Generated structures viewed from +X axis", fontsize=12)
     fig.tight_layout()
     return fig
 
 
-def docs_plot_sites(surface_object, rotation='-45x,0y,0z'):
+def docs_plot_sites(surface_object, rotation="-45x,0y,0z"):
     """
     Helper function to plot a series of sites from a surface object.
 
@@ -409,24 +432,28 @@ def docs_plot_sites(surface_object, rotation='-45x,0y,0z'):
 
     inds = random.sample(list(surface_object.site_df.index.values), 6)
 
-    fig, ax = plt.subplots(1,6, figsize=(10,4), sharex=True, sharey=True)
+    fig, ax = plt.subplots(1, 6, figsize=(10, 4), sharex=True, sharey=True)
 
     for ax_i, i in enumerate(inds):
         view_atoms = surface_object.view_site(i, return_atoms=True)
         parent_atoms = surface_object.atoms.copy()
 
         for atom in parent_atoms:
-            if atom.index not in view_atoms.info['topology']:
-                parent_atoms[atom.index].symbol = 'Zn'
+            if atom.index not in view_atoms.info["topology"]:
+                parent_atoms[atom.index].symbol = "Zn"
 
         view_atoms = parent_atoms + view_atoms
         plot_atoms(view_atoms, ax=ax[ax_i], rotation=rotation)
         ax[ax_i].set_axis_off()
-    fig.suptitle('Generated structures viewed from +X+Z axis, site atoms shown as Cu, other as Zn', fontsize=12)
+    fig.suptitle(
+        "Generated structures viewed from +X+Z axis, site atoms shown as Cu, other as Zn",
+        fontsize=12,
+    )
     fig.tight_layout()
     return fig
 
-def freeze_atoms(atoms, from_top = 3):
+
+def freeze_atoms(atoms, from_top=3):
     """
     Freezes the bottom layers of atoms in a structure to prevent them from moving during relaxation.
 
@@ -437,10 +464,25 @@ def freeze_atoms(atoms, from_top = 3):
     Returns:
     object: The ASE atoms object with the bottom layers frozen.
     """
-    from ase.constraints import FixAtoms
-    c = FixAtoms(indices=[atom.index for atom in atoms if atom.position[2] < max([a.position[2] for a in atoms if a.symbol not in ['C','O','S','N','H']]) - from_top])
+
+    c = FixAtoms(
+        indices=[
+            atom.index
+            for atom in atoms
+            if atom.position[2]
+            < max(
+                [
+                    a.position[2]
+                    for a in atoms
+                    if a.symbol not in ["C", "O", "S", "N", "H"]
+                ]
+            )
+            - from_top
+        ]
+    )
     atoms.set_constraint(c)
     return atoms
+
 
 def save_relax_config(dyn, fname):
     """
@@ -462,9 +504,7 @@ def save_relax_config(dyn, fname):
             "mlff_energy": en,
         }
     )
-    atomsi.arrays.update(
-        {"mlff_forces": frcs}
-    )
+    atomsi.arrays.update({"mlff_forces": frcs})
     ase.io.write(fname, atomsi, append=True)
 
 
@@ -480,6 +520,7 @@ def is_clear_to_start(fname):
     """
     import os.path
     from pathlib import Path
+
     if os.path.isfile(fname):
         return False
     else:
@@ -505,8 +546,7 @@ def relaxatoms(atoms, calc, prefix, steps=300, freeze_bottom=False, fmax=0.05):
     atoms.calc = calc
 
     if freeze_bottom:
-        atoms = freeze_atoms(atoms, from_top = 3)
-
+        atoms = freeze_atoms(atoms, from_top=3)
 
     dyn = BFGS(atoms)
     dyn.attach(save_relax_config, interval=1, dyn=dyn, fname=fname)
@@ -514,8 +554,8 @@ def relaxatoms(atoms, calc, prefix, steps=300, freeze_bottom=False, fmax=0.05):
 
     return atoms.get_potential_energy()
 
+
 def minhopatoms(atoms, calc, prefix, steps=10, fmax=0.05, temperature=1000):
-    from ase.optimize.minimahopping import MinimaHopping
 
     fname = f"{prefix}_{atoms.info['uid']}.xyz"
     atoms.calc = calc
@@ -524,23 +564,23 @@ def minhopatoms(atoms, calc, prefix, steps=10, fmax=0.05, temperature=1000):
 
     opt = MinimaHopping(
         atoms=atoms,
-        T0 =  1000., # K, initial MD ‘temperature’
-        Ediff0 =  0.5, # eV, initial energy acceptance threshold
-        logfile =  f'hop_{fname}.log', # text log
-        minima_threshold = 0.5, # A, threshold for identical configs
-        timestep = 1.0,
-        minima_traj = f'{fname}.traj',
-        fmax = fmax
-        )
-#    opt.attach(save_relax_config, interval=1, dyn=dyn, fname=fname)
+        T0=1000.0,  # K, initial MD ‘temperature’
+        Ediff0=0.5,  # eV, initial energy acceptance threshold
+        logfile=f"hop_{fname}.log",  # text log
+        minima_threshold=0.5,  # A, threshold for identical configs
+        timestep=1.0,
+        minima_traj=f"{fname}.traj",
+        fmax=fmax,
+    )
+    #    opt.attach(save_relax_config, interval=1, dyn=dyn, fname=fname)
     opt(totalsteps=steps)
 
-    
     # dyn.run(fmax=fmax, steps=steps)
 
     return atoms.get_potential_energy()
 
-def get_blenderized(traj, scale=[1,1,1], hide_spot='default'):
+
+def get_blenderized(traj, scale=[1, 1, 1], hide_spot="default"):
     """
     Prepares a trajectory for visualization in Blender by scaling and adding hidden atoms to ensure consistent atom counts.
 
@@ -556,25 +596,24 @@ def get_blenderized(traj, scale=[1,1,1], hide_spot='default'):
     max_atoms_dict = get_max_atoms_dict(traj)
 
     for t in traj:
-        a=t.copy()
-        a.positions += [0,.4,0]
+        a = t.copy()
+        a.positions += [0, 0.4, 0]
         a.wrap()
 
-        if hide_spot=='default':
-            hide_spot = a.cell[0]*0.5 + a.cell[1]*0.5
+        if hide_spot == "default":
+            hide_spot = a.cell[0] * 0.5 + a.cell[1] * 0.5
 
         for s, no in max_atoms_dict.items():
-
-            n_atom_to_add = no - len([atom for atom in a if atom.symbol==s])
+            n_atom_to_add = no - len([atom for atom in a if atom.symbol == s])
 
             for n in range(n_atom_to_add):
                 a.append(Atom(s, hide_spot))
 
-
-        a = a*scale
+        a = a * scale
         blenderized_trj.append(a)
 
     return blenderized_trj
+
 
 def get_max_atoms_dict(traj):
     """
@@ -592,13 +631,15 @@ def get_max_atoms_dict(traj):
             if s not in max_atoms_dict.keys():
                 max_atoms_dict[s] = []
 
-            max_atoms_dict[s].append(len(t[[atom.index for atom in t if atom.symbol == s]]))
+            max_atoms_dict[s].append(
+                len(t[[atom.index for atom in t if atom.symbol == s]])
+            )
     for k, v in max_atoms_dict.items():
         max_atoms_dict[k] = max(v)
     return max_atoms_dict
 
 
-#def conformer_to_site(atoms, site, conformer, mode='optimize', overlap_thr = 0):
+# def conformer_to_site(atoms, site, conformer, mode='optimize', overlap_thr = 0):
 #
 #    atoms = atoms.copy()
 #    conformer = conformer.copy()
@@ -644,7 +685,7 @@ def get_max_atoms_dict(traj):
 #
 #    return out_atoms
 #
-#def conformer_to_site(atoms, site, conformer, mode='optimize', overlap_thr = 0):
+# def conformer_to_site(atoms, site, conformer, mode='optimize', overlap_thr = 0):
 #
 #    atoms = atoms.copy()
 #    conformer = conformer.copy()
@@ -753,7 +794,7 @@ def get_max_atoms_dict(traj):
 
 #     Args:
 #         trajectory (list): list of ase.Atoms structures for a subset to be selected.
-#         element (str, optional): Element eg 'H', 'Zr', soap descriptor will be constructed for all sites of this element. Defaults to 'all'. 
+#         element (str, optional): Element eg 'H', 'Zr', soap descriptor will be constructed for all sites of this element. Defaults to 'all'.
 #         soap_cutoff (float, optional): Defaults to 4.5.
 
 #     Returns: normalized soapdesc.
@@ -765,13 +806,13 @@ def get_max_atoms_dict(traj):
 #     from pymatgen.core import Element
 
 #     traj = trajectory.copy()
-    
+
 #     if element == 'all':
 #         print(f'    Generating SOAP with {soap_cutoff} cuttoff for all atoms in trajectory...')
 #         soap=SOAP(rcut=4.5,nmax=8,lmax=4,sigma=0.5,periodic=True,rbf='gto',crossover=True)
 #         soap.fit(traj,site_to_structure_method='inner')
 #         soapdesc=soap.featurize_many(traj,n_jobs=20)
-        
+
 #     else:
 #         print(f'    Selecting {element} atoms in the trajectory...')
 #         selector=AtomSelector()
@@ -782,7 +823,7 @@ def get_max_atoms_dict(traj):
 #         soap=SOAP(rcut=soap_cutoff,nmax=8,lmax=4,sigma=0.5,periodic=True,rbf='gto',crossover=True)
 #         soap.fit(traj,site_to_structure_method='off')
 #         soapdesc=soap.featurize_many(traj,idx_list=selected_atoms, n_jobs=20)
-        
+
 #     soapdesc = normalize(soapdesc, axis=1)
 #     return soapdesc
 
@@ -835,7 +876,7 @@ def get_max_atoms_dict(traj):
 #     Args:
 #         trajectory (list): list of ase.Atoms structures for a subset to be selected.
 #         n_to_select (int): number of structures to be selected from trajectory.
-#         element (str, optional): Element eg 'H', 'Zr', soap descriptor will be constructed for all sites of this element. Defaults to 'all'. 
+#         element (str, optional): Element eg 'H', 'Zr', soap descriptor will be constructed for all sites of this element. Defaults to 'all'.
 #         soap_cutoff (float, optional): Defaults to 4.5.
 
 #     Returns:
@@ -850,7 +891,7 @@ def get_max_atoms_dict(traj):
 #     print(f'    Starting FPS, selecting {n_to_select} configurations...')
 #     small_fps = FPS(initialize=0, n_to_select=n_to_select)
 #     small_fps.fit(soapdesc)
-    
+
 #     print('    Done!')
 #     selected_traj = []
 #     selected_filter = []
@@ -861,7 +902,7 @@ def get_max_atoms_dict(traj):
 #             selected_traj.append(a.copy())
 #             sf=1
 #         selected_filter.append(sf)
-    
+
 #     if plot_tsne:
 #         env_embedding = do_TSNE(soapdesc)
 #         return plot_tsne_selection(selected_filter, env_embedding, show_plot = True)
@@ -883,8 +924,8 @@ def get_max_atoms_dict(traj):
 
 #     output {}
 
-#     structure {} 
-#       number {} 
+#     structure {}
+#       number {}
 #       inside box {} {} {} {} {} {}
 #     end structure
 
@@ -908,15 +949,15 @@ def get_max_atoms_dict(traj):
 #     # ]
 #     # cmd = " ".join(cmd)
 #     # run_subprocess(cmd)
-    
-    
+
+
 # def write_packmol_input_mix(slab, tolerance = 2.0, output = 'out.xyz', structure1 = './input1.xyz',
 #                             structure2 = './input2.xyz', number = 1, fraction1=0.5):
 
 #     xmin = 0 ; xmax = slab.cell[0][0] - 1
 #     ymin = 0 ; ymax = slab.cell[1][1] - 1
 #     zmin = max([a.position[2] for a in slab]) + 2 ; zmax = slab.cell[2][2] - 2
-    
+
 #     number1 = int(number*fraction1)
 #     number2 = int(number*(1 - fraction1))
 
@@ -928,13 +969,13 @@ def get_max_atoms_dict(traj):
 
 #     output {}
 
-#     structure {} 
-#       number {} 
+#     structure {}
+#       number {}
 #       inside box {} {} {} {} {} {}
 #     end structure
-    
-#     structure {} 
-#       number {} 
+
+#     structure {}
+#       number {}
 #       inside box {} {} {} {} {} {}
 #     end structure
 
@@ -965,11 +1006,11 @@ def get_max_atoms_dict(traj):
 
 # def detect_unique_structures(structures, prec=.001, rcut=5.5, element='all'):
 #     """
-#     Author: Sandip De, Edvin Fako 
+#     Author: Sandip De, Edvin Fako
 #     Given a list of pymatgen structure object this routine identify the unique structure index using SOAP descriptors.
-     
+
 #     """
-    
+
 #     from pymatgen.io.ase import AseAtomsAdaptor
 #     from soapml.descriptors.soap import SOAP
 #     from sklearn.preprocessing import normalize
@@ -991,12 +1032,12 @@ def get_max_atoms_dict(traj):
 
 #     atoms = [AseAtomsAdaptor.get_atoms(s) for s in structures]
 
-    
+
 #     if element == 'all':
 #         soap=SOAP(rcut=rcut,nmax=nmax,lmax=lmax,sigma=sigma,periodic=True,rbf='gto',crossover=True)
 #         soap.fit(atoms,site_to_structure_method='inner')
 #         soapdesc=soap.featurize_many(atoms,n_jobs=20)
-        
+
 #     else:
 #         selector=AtomSelector()
 #         selector.fit({'numbers':[Element(element).number]}) #atomic number of He that is the marker
@@ -1005,9 +1046,9 @@ def get_max_atoms_dict(traj):
 #         soap=SOAP(rcut=rcut,nmax=nmax,lmax=lmax,sigma=sigma,periodic=True,rbf='gto',crossover=True)
 #         soap.fit(atoms,site_to_structure_method='off')
 #         soapdesc=soap.featurize_many(atoms,idx_list=selected_atoms, n_jobs=20)
-        
+
 #     soapdesc = normalize(soapdesc, axis=1)
-    
+
 #     dist = squareform(pdist(soapdesc))
 #     skip = np.array([False for i in range(len(dist))])
 #     ilist, jlist = np.where(dist < prec)

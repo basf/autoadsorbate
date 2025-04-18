@@ -2,9 +2,9 @@ import pandas as pd
 import numpy as np
 import itertools
 from ase.neb import NEB
-import ase
-from ase import Atom, Atoms
+from ase import Atoms
 from typing import Union
+
 
 def permute_image(atoms, fix_species=None):
     """
@@ -19,24 +19,21 @@ def permute_image(atoms, fix_species=None):
     """
     ind_dict = {}
 
-    atoms_numbers = list(set(atoms.arrays['numbers']))
+    atoms_numbers = list(set(atoms.arrays["numbers"]))
     atoms_numbers.sort()
 
     perturb_numbers = atoms_numbers.copy()
     if fix_species != None:
         for n in fix_species:
             perturb_numbers.remove(n)
-            ind_dict[n] = [[atom.index for atom in atoms if atom.number == n]] 
-            
+            ind_dict[n] = [[atom.index for atom in atoms if atom.number == n]]
 
     for n in perturb_numbers:
-    
         ind_dict[n] = []
-        
+
         inds = [atom.index for atom in atoms if atom.number == n]
-        
+
         for perm in [p for p in itertools.permutations(inds)]:
-            
             ind_dict[n].append(list(perm))
 
     arrays = [v for _, v in ind_dict.items()]
@@ -46,17 +43,17 @@ def permute_image(atoms, fix_species=None):
     for i in itertools.product(*arrays):
         l = [item for sublist in i for item in sublist]
         all_perm_inds.append(l)
-        
+
     perm_ini_traj = []
     for perm in all_perm_inds:
-        a= atoms.copy()
+        a = atoms.copy()
         a = a[perm]
         perm_ini_traj.append(a)
 
     return perm_ini_traj
 
 
-def get_connectivity(atoms, bond_range = [0., 2]):
+def get_connectivity(atoms, bond_range=[0.0, 2]):
     """
     Computes the connectivity matrix for the given atomic structure based on the specified bond range.
 
@@ -70,13 +67,13 @@ def get_connectivity(atoms, bond_range = [0., 2]):
     distm = atoms.get_all_distances()
     distm = np.triu(distm, k=0)
 
-    bondm = np.logical_and(distm>bond_range[0], distm<bond_range[1])*1
+    bondm = np.logical_and(distm > bond_range[0], distm < bond_range[1]) * 1
     distm = distm * bondm
-    
+
     return distm
 
 
-def get_neb_images(ini, fin, images_no=10, method='linear'):
+def get_neb_images(ini, fin, images_no=10, method="linear"):
     """
     Generates a series of images for the Nudged Elastic Band (NEB) method by interpolating between initial and final structures.
 
@@ -95,6 +92,7 @@ def get_neb_images(ini, fin, images_no=10, method='linear'):
 
     return neb.images
 
+
 def get_neb_norm(neb_images):
     """
     Computes the NEB (Nudged Elastic Band) norm, which is the minimum distance between atoms across all NEB images.
@@ -108,11 +106,12 @@ def get_neb_norm(neb_images):
     im_dist = []
     for i, im in enumerate(neb_images):
         d = im.get_all_distances()
-        d = d[d>0]
+        d = d[d > 0]
         im_dist.append(np.min(d))
-   
+
     neb_norm = np.min(im_dist)
     return neb_norm
+
 
 def get_neb_dists(neb_images):
     """
@@ -130,11 +129,12 @@ def get_neb_dists(neb_images):
     inds = []
     for i, im in enumerate(neb_images):
         d = im.get_all_distances()
-        d = d[d>0]
+        d = d[d > 0]
         im_dist.append(np.min(d))
         inds.append(i)
-    
+
     return inds, im_dist
+
 
 def get_distm(ini, fin):
     """
@@ -149,13 +149,14 @@ def get_distm(ini, fin):
     """
     distm_fin = get_connectivity(fin)
     distm_ini = get_connectivity(ini)
-    distm = distm_fin-distm_ini
+    distm = distm_fin - distm_ini
 
     distm = np.abs(distm)
 
     return distm
 
-def get_distm_sum(ini, fin, unit='A', tolerance=0.5):
+
+def get_distm_sum(ini, fin, unit="A", tolerance=0.5):
     """
     Computes the sum of the absolute differences in connectivity matrices between the initial and final atomic structures.
 
@@ -173,17 +174,19 @@ def get_distm_sum(ini, fin, unit='A', tolerance=0.5):
     """
     distm = get_distm(ini, fin)
     distm = np.abs(distm)
-    
-    if unit=='bonds':
-        distm = (distm > tolerance)
+
+    if unit == "bonds":
+        distm = distm > tolerance
         return np.sum(distm)
 
-    elif unit=='A':
-        distm = distm* (distm > tolerance)
+    elif unit == "A":
+        distm = distm * (distm > tolerance)
         return np.sum(distm)
-        
+
     else:
-        raise ValueError("Value of variable 'unit' can be 'A' - angstrom or 'bonds' - covalent bond")    
+        raise ValueError(
+            "Value of variable 'unit' can be 'A' - angstrom or 'bonds' - covalent bond"
+        )
 
 
 def plot_distm(ini, fin):
@@ -198,20 +201,24 @@ def plot_distm(ini, fin):
     None
     """
     import seaborn as sns
-    f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, figsize=(12,2.3))#, gridspec_kw = {'width_ratios': [1, 3]})
-    
+
+    f, (ax1, ax2, ax3, ax4) = plt.subplots(
+        1, 4, figsize=(12, 2.3)
+    )  # , gridspec_kw = {'width_ratios': [1, 3]})
+
     distm_fin = Neb.get_connectivity(fin)
     distm_ini = Neb.get_connectivity(ini)
-    distm = distm_fin-distm_ini
-    
+    distm = distm_fin - distm_ini
+
     neb_images = get_neb_images(ini, fin)
-    x,y = get_neb_dists(neb_images)
-    
+    x, y = get_neb_dists(neb_images)
+
     sns.heatmap(distm_ini, linewidth=0.5, ax=ax1)
     sns.heatmap(distm_fin, linewidth=0.5, ax=ax2)
     sns.heatmap(np.abs(distm), linewidth=0.5, ax=ax3)
-    sns.scatterplot(x=x,y=y, ax=ax4)
+    sns.scatterplot(x=x, y=y, ax=ax4)
     f.tight_layout()
+
 
 def arrange_backbone(ini, fin, bond_len_tolerance=0.5):
     """
@@ -228,41 +235,44 @@ def arrange_backbone(ini, fin, bond_len_tolerance=0.5):
         - best_fin (object): The final structure.
     """
     ini = ini[ini.numbers.argsort()]
-    fin = fin[fin.numbers.argsort()] 
+    fin = fin[fin.numbers.argsort()]
 
     h = ini.copy()
-    h = h[[atom.index for atom in h if atom.symbol =='H']]
+    h = h[[atom.index for atom in h if atom.symbol == "H"]]
 
     h_fin = fin.copy()
-    h_fin = h_fin[[atom.index for atom in h_fin if atom.symbol =='H']]
-    
+    h_fin = h_fin[[atom.index for atom in h_fin if atom.symbol == "H"]]
+
     b_ini = ini.copy()
-    b_ini = b_ini[[atom.index for atom in b_ini if atom.symbol !='H']]
-    
+    b_ini = b_ini[[atom.index for atom in b_ini if atom.symbol != "H"]]
+
     b_fin = fin.copy()
-    b_fin = b_fin[[atom.index for atom in b_fin if atom.symbol !='H']]
+    b_fin = b_fin[[atom.index for atom in b_fin if atom.symbol != "H"]]
 
     b_ini_perms = permute_image(b_ini)
-    
-    best_ini_perm = get_best_perm(b_ini_perms, b_fin, bond_len_tolerance=bond_len_tolerance)
 
-    if fin[0].symbol == 'H':
+    best_ini_perm = get_best_perm(
+        b_ini_perms, b_fin, bond_len_tolerance=bond_len_tolerance
+    )
+
+    if fin[0].symbol == "H":
         best_fin = h_fin.copy()
         best_fin += b_fin
-        
+
         best_ini = h.copy()
         best_ini += best_ini_perm
     else:
         best_fin = b_fin.copy()
         best_fin += h_fin
-        
+
         best_ini = best_ini_perm.copy()
         best_ini += h
 
     # print('best_ini: ', best_ini)
     # print('best_fin: ', best_fin)
-    
+
     return best_ini, best_fin
+
 
 def get_sorted(atoms):
     """
@@ -274,17 +284,17 @@ def get_sorted(atoms):
     Returns:
     object: An ASE atoms object with atoms sorted by their atomic numbers.
     """
-    atoms_numbers = list(set(atoms.arrays['numbers']))
+    atoms_numbers = list(set(atoms.arrays["numbers"]))
     atoms_numbers.sort()
 
     inds = []
     for n in atoms_numbers:
-
-        inds+=[atom.index for atom in atoms if atom.number == n]
+        inds += [atom.index for atom in atoms if atom.number == n]
 
     b = atoms.copy()
-    b= b[inds]
+    b = b[inds]
     return b
+
 
 def get_best_perm(ini_perms, fin, bond_len_tolerance, plot=False):
     """
@@ -299,51 +309,43 @@ def get_best_perm(ini_perms, fin, bond_len_tolerance, plot=False):
     Returns:
     object: The best permuted ASE atoms object that matches the final structure.
     """
-    best_ds = 1000000000000000 # very big number
+    best_ds = 1000000000000000  # very big number
     fin = get_sorted(fin)
-    
+
     df = []
     for j, a in enumerate(ini_perms):
-
         a = get_sorted(a)
         # print('ini: ', a)
         # print('fin: ', fin)
 
         if plot:
             plot_distm(a, fin)
-        
+
         neb_images = get_neb_images(a, fin)
 
-        ds = get_distm_sum(a, fin, unit='bonds', tolerance=bond_len_tolerance)
-        if ds <= best_ds:    
-            df.append(
-                {
-                    'ds' : ds,
-                    'touch' : get_neb_norm(neb_images),
-                    'perm_index': j
-                }
-            )
+        ds = get_distm_sum(a, fin, unit="bonds", tolerance=bond_len_tolerance)
+        if ds <= best_ds:
+            df.append({"ds": ds, "touch": get_neb_norm(neb_images), "perm_index": j})
             best_ds = ds
     df = pd.DataFrame(df)
-    
+
     min_ds = np.min(df.ds.values)
-    
-    
-    df = df.sort_values(by='touch', ascending=False)
-    
-    
-    df = df[df.ds==min_ds]
+
+    df = df.sort_values(by="touch", ascending=False)
+
+    df = df[df.ds == min_ds]
     print(df)
     best_index = df.perm_index.values[0]
     best_touch = df.touch.values[0]
-    print('best index: ', best_index)
+    print("best index: ", best_index)
     best_perm = ini_perms[best_index].copy()
     best_perm = get_sorted(best_perm)
 
-    info = {'ds': min_ds, 'touch': best_touch}
+    info = {"ds": min_ds, "touch": best_touch}
     best_perm.info.update(info)
-    
+
     return best_perm
+
 
 def arrange_images(ini, fin, bond_len_tolerance=0.5, plot=False):
     """
@@ -360,17 +362,17 @@ def arrange_images(ini, fin, bond_len_tolerance=0.5, plot=False):
         - best_ini (object): The permuted initial structure that best matches the final structure.
         - fin (object): The final structure.
     """
-    t=[]
+    t = []
 
     ini, fin = arrange_backbone(ini, fin, bond_len_tolerance=bond_len_tolerance)
     fix_species = [atom.number for atom in ini if atom.number != 1]
-    perms = permute_image(ini, fix_species=[6,8])
+    perms = permute_image(ini, fix_species=[6, 8])
     print(len(perms))
     best_ini = get_best_perm(perms, fin, bond_len_tolerance=0.1, plot=plot)
     return best_ini, fin
-    
 
-#def make_best_nebs(ini, fin, rnorm_cutoff=2, bond_range = [0., 2], neb_images=10, neb_dist=0.7, verbose=False):
+
+# def make_best_nebs(ini, fin, rnorm_cutoff=2, bond_range = [0., 2], neb_images=10, neb_dist=0.7, verbose=False):
 #
 #    ini = ini[ini.numbers.argsort()]
 #    fin = fin[fin.numbers.argsort()]
@@ -378,7 +380,7 @@ def arrange_images(ini, fin, bond_len_tolerance=0.5, plot=False):
 #    permuted_ini = permute_image(ini)
 #
 #    best_nebs = []
-#    
+#
 #    best_ini = select_best_neb(permuted_ini, fin, rnorm_cutoff=rnorm_cutoff, bond_range = bond_range, neb_images = neb_images, neb_dist = neb_dist, verbose=False)
 #
 #    if best_ini:
@@ -394,7 +396,7 @@ def arrange_images(ini, fin, bond_len_tolerance=0.5, plot=False):
 #
 #    return best_nebs
 
-#def check_neb(iatoms, fatoms, bonds=1, bond_range = [0., 2]):
+# def check_neb(iatoms, fatoms, bonds=1, bond_range = [0., 2]):
 #
 #    reactm = check_image(iatoms) - check_image(fatoms)
 #
@@ -404,29 +406,29 @@ def arrange_images(ini, fin, bond_len_tolerance=0.5, plot=False):
 #
 #    return np.linalg.norm(reactm), np.linalg.norm(flat_reactm[:-bonds])
 #
-#def select_best_ini(ini, fin, rnorm_cutoff=3, bond_range = [0., 2], neb_images=10, neb_dist=0.8, verbose=False):
+# def select_best_ini(ini, fin, rnorm_cutoff=3, bond_range = [0., 2], neb_images=10, neb_dist=0.8, verbose=False):
 #    df = []
-#    
+#
 #    perm_ini_traj = permute_atoms(ini)
 #
 #    for i, a in enumerate(perm_ini_traj):
-#    
+#
 #        INI = perm_ini_traj[i].copy()
 #        FIN = fin.copy()
-#    
+#
 #        rnorm, _ = check_neb(INI, FIN, bonds=1, bond_range = [0., 2])
-#        
+#
 #        neb = NEB([INI.copy() for _ in range(neb_images)]+[FIN])
 #        neb.interpolate()
-#    
+#
 #        im_dist = []
 #        for im in neb.images:
 #            d = im.get_all_distances()
 #            d = d[d>0]
 #            im_dist.append(np.min(d))
 #        neb_norm = np.min(im_dist)
-#    
-#        info = {'neb_index':i, 'rnorm': rnorm, 'neb_norm': neb_norm} 
+#
+#        info = {'neb_index':i, 'rnorm': rnorm, 'neb_norm': neb_norm}
 #        df.append(info)
 #    df = pd.DataFrame(df)
 #    df=df[df['rnorm'] < rnorm_cutoff]
@@ -445,9 +447,9 @@ def arrange_images(ini, fin, bond_len_tolerance=0.5, plot=False):
 #        return False
 
 
-#Credits Lars Leon Schaaf
+# Credits Lars Leon Schaaf
 
-#def permute_like_species(sp_t, select):
+# def permute_like_species(sp_t, select):
 #    """
 #    Returns new index of all posible permutations between like elements of the species
 #    total array (spt_t), but only for the select configurations
@@ -493,11 +495,11 @@ def arrange_images(ini, fin, bond_len_tolerance=0.5, plot=False):
 #    #     ((3, 0, 2), (7, 5)),
 #    #     ((3, 2, 0), (5, 7)),
 #    #     ((3, 2, 0), (7, 5))]
-# 
+#
 #    all_perm_flattened = [list(itertools.chain.from_iterable(i)) for i in all_perm]
-# 
+#
 #    indexs_permutations = []
-# 
+#
 #    for perm in all_perm:
 #        indexi = indexs.copy()
 #        for i, s in enumerate(grouped_s):
@@ -505,32 +507,32 @@ def arrange_images(ini, fin, bond_len_tolerance=0.5, plot=False):
 #        indexs_permutations.append(indexi)
 #        # del s
 #        # del i
-# 
+#
 #    # del perm
-# 
+#
 #    indexs_permutations = np.array(indexs_permutations)
-# 
+#
 #    return indexs_permutations
-# 
-# 
-#def get_values_for_all_permutations(val_t, permutations):
+#
+#
+# def get_values_for_all_permutations(val_t, permutations):
 #    # Val_t could be an atoms object
 #    return np.array([val_t[perm] for perm in permutations])
-# 
-# 
-#def get_distances_between_images(imagesi):
+#
+#
+# def get_distances_between_images(imagesi):
 #    """Returns distance between each image ie 2norm of d2-d1"""
-# 
+#
 #    spring_lengths = []
 #    for j in range(len(imagesi) - 1):
 #        spring_vec = imagesi[j + 1].get_positions() - imagesi[j].get_positions()
 #        spring_lengths.append(np.linalg.norm(spring_vec))
 #    return np.array(spring_lengths)
-# 
-# 
-#def add_intermediary_images(
+#
+#
+# def add_intermediary_images(
 #    imagesi, dist_cutoff, interpolate_method="idpp", max_number=100, verbose=False,
-#):
+# ):
 #    """Add additional images inbetween existing ones, purely based on geometry"""
 #    # create copy of images
 #    imagesi = [at.copy() for at in imagesi]
@@ -542,36 +544,36 @@ def arrange_images(ini, fin, bond_len_tolerance=0.5, plot=False):
 #            break
 #        distances = get_distances_between_images(imagesi)
 #        jmax = np.argmax(distances)
-# 
+#
 #        toInterpolate = [imagesi[jmax]]
 #        toInterpolate += [toInterpolate[0].copy()]
 #        toInterpolate += [imagesi[jmax + 1]]
-# 
+#
 #        neb = NEB(toInterpolate)
 #        neb.interpolate(method=interpolate_method, apply_constraint=True)
-# 
+#
 #        interp_images.append([jmax, toInterpolate[1].copy()])
 #        # Add images
 #        imagesi.insert(jmax + 1, toInterpolate[1].copy())
 #        if verbose:
 #            print(f"Additional image added at {jmax} with distances {max(distances)}")
 #        max_dist_images = max(get_distances_between_images(imagesi))
-# 
+#
 #    return interp_images, imagesi
-# 
-#def get_slice(mystring):
+#
+# def get_slice(mystring):
 #    return slice(*[{True: lambda n: None, False: int}[x == ''](x) for x in (mystring.split(':') + ['', '', ''])[:3]])
-# 
-#def sort_atom_species(at, mask_slice):
+#
+# def sort_atom_species(at, mask_slice):
 #    cs = at.get_chemical_symbols()
 #    order = np.arange(len(at))
 #    order[get_slice(mask_slice)] = order[get_slice(mask_slice)][np.argsort(cs[get_slice(mask_slice)])]
 #    nat = ase.Atoms([at[i] for i in order], cell=at.get_cell(), pbc=at.get_pbc())
 #    return nat
-# 
-# 
+#
+#
 ## permuting atoms
-#def get_all_permutations(data, tags):
+# def get_all_permutations(data, tags):
 #    all_perms = [data]
 #    for tag in np.unique(tags):
 #        # print(tag)
@@ -583,19 +585,19 @@ def arrange_images(ini, fin, bond_len_tolerance=0.5, plot=False):
 #                datai = dataj.copy()
 #                datai[tags == tag] = perm
 #                all_perms.append(datai)
-# 
+#
 #    return np.array(all_perms)
-# 
-#def permute_atoms_to_smallest_distance(atstart, atend, mol_index):
+#
+# def permute_atoms_to_smallest_distance(atstart, atend, mol_index):
 #    indices = np.arange(len(atend))
 #    species = np.array(atend.get_chemical_symbols())
 #    positions = atend.get_positions()
-# 
+#
 #    data = indices[mol_index:]
 #    tags = species[mol_index:]
-# 
+#
 #    permuts = get_all_permutations(data, tags)
-# 
+#
 #    # get distance between all permutations
 #    pos_start = atstart.get_positions()[mol_index:]
 #    dists = [np.linalg.norm(positions[perm] - pos_start) for perm in permuts]
@@ -606,8 +608,8 @@ def arrange_images(ini, fin, bond_len_tolerance=0.5, plot=False):
 #    # print(dist)
 #    at_new.info['neb_dist'] = dist
 #    return at_new
-# 
-#def permute_trajectory_to_smallest_distance_between_images(traj,mol_index):
+#
+# def permute_trajectory_to_smallest_distance_between_images(traj,mol_index):
 #    traj = [at.copy() for at in traj]
 #    for i, at in enumerate(traj):
 #        if i == 0:
@@ -615,8 +617,9 @@ def arrange_images(ini, fin, bond_len_tolerance=0.5, plot=False):
 #        traj[i] = permute_atoms_to_smallest_distance(traj[i-1], traj[i], mol_index).copy()
 #    return traj
 
-def make_neb(initial:Atoms, final:Atoms, images_no:int=10, idpp:bool=True):
-    """ Function that creates a trajectory of linear interpolations between two ase atoms objects.
+
+def make_neb(initial: Atoms, final: Atoms, images_no: int = 10, idpp: bool = True):
+    """Function that creates a trajectory of linear interpolations between two ase atoms objects.
 
     Args:
         initial (Atoms): Initial image of the neb chain
@@ -628,6 +631,7 @@ def make_neb(initial:Atoms, final:Atoms, images_no:int=10, idpp:bool=True):
         list of Atoms: Interpolated images
     """
     from ase.neb import NEB
+
     images = [initial]
     for i in range(images_no):
         images.append(initial.copy())
@@ -635,16 +639,18 @@ def make_neb(initial:Atoms, final:Atoms, images_no:int=10, idpp:bool=True):
 
     neb = NEB(images, images_no)
 
-    if idpp==True:
-        neb.interpolate(method='idpp')
+    if idpp == True:
+        neb.interpolate(method="idpp")
     else:
         neb.interpolate()
 
     return neb.images
 
 
-def _swap_atoms_positions(atoms:Atoms, target_ind:Union[tuple,list], permutation:Union[tuple,list]):
-    """Internal routine that 
+def _swap_atoms_positions(
+    atoms: Atoms, target_ind: Union[tuple, list], permutation: Union[tuple, list]
+):
+    """Internal routine that
 
     Args:
         atoms (Atoms): _description_
@@ -655,36 +661,37 @@ def _swap_atoms_positions(atoms:Atoms, target_ind:Union[tuple,list], permutation
         _type_: _description_
     """
 
-
     if not set(target_ind) == set(permutation):
-        print('Target_ind and permutation must contain same indicies.')
+        print("Target_ind and permutation must contain same indicies.")
         return
     else:
         positions = [atoms[i].position.copy() for i in permutation]
-        
+
         # print(positions)
-        
+
         for i, j in enumerate(target_ind):
             # print(f'setting position of atom {atoms[j]} from {atoms[j].position} to {positions[i]}', )
             atoms[j].position = positions[i]
     return atoms
 
+
 def _get_permuted_indices(atoms):
     from itertools import permutations
     from collections import OrderedDict
- 
-     
+
     species_in_order = [atom.symbol for atom in atoms]
     species = list(OrderedDict.fromkeys(species_in_order))
 
-    mol_atom_list = [i for i, f in enumerate(atoms.arrays['fragments']) if f == 1]
+    mol_atom_list = [i for i, f in enumerate(atoms.arrays["fragments"]) if f == 1]
 
     permuted_trj = []
     groups = []
     for symbol in species:
-        group = [a.index for a in atoms if a.symbol == symbol and a.index in mol_atom_list]
+        group = [
+            a.index for a in atoms if a.symbol == symbol and a.index in mol_atom_list
+        ]
         groups.append(group)
-    
+
     pgroups = []
     for group in groups:
         if len(group) > 0:
@@ -695,29 +702,29 @@ def _get_permuted_indices(atoms):
 
     return pgroups
 
-def get_swapped_by_species(atoms:Atoms):
+
+def get_swapped_by_species(atoms: Atoms):
     """_summary_
 
     Args:
         atoms (Atoms): _description_
     """
-    
+
     from itertools import permutations
-    
+
     pgroups = _get_permuted_indices(atoms)
-    
+
     permutations = []
     for pgroup in itertools.product(*pgroups):
         tup = ()
         for t in pgroup:
-            tup+=t
+            tup += t
         permutations.append(tup)
 
-        
     swapped_trj = []
     for permutation in permutations:
         a = atoms.copy()
         a = _swap_atoms_positions(a, permutations[0], permutation)
         swapped_trj.append(a)
-        
-    return(swapped_trj)
+
+    return swapped_trj

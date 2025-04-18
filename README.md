@@ -12,6 +12,12 @@
 
 ## Installation
 
+The package is designed to be as lightweight as possible, to implement seamlessly into existing environments with complex dependecies. If you `git clone <autoadsorbate>` and jut `sys.path.insert(0, <path/to/autoadsorbate>)`, most likely it will just work.
+- Built on only:
+  - `ase`
+  - `rdkit`
+  - Basic Python packages: `pandas`, `numpy`
+
 ```python
 pip install autoadsorbate
 ```
@@ -44,13 +50,6 @@ To effectively simulate reactive behavior at surfaces, it is crucial to establis
     - Intermediates are fragments bound to an active site.
 
 <!-- ### basic imports -->
-
-The package is designed to be as lightweight as possible, to make its implemetation into existing environments with complex dependecies as straight-forward as possible.
-- Built on:
-  - `ase`
-  - `rdkit`
-  - Basic Python packages: `pandas`, `numpy`
-
 
 ### Fragment
 

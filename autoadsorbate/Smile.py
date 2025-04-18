@@ -3,16 +3,14 @@ from tempfile import NamedTemporaryFile
 from typing import List, Tuple
 
 import numpy as np
-
 from ase import Atoms
 from ase.io import read
-
 from rdkit import Chem
 from rdkit.Chem import AllChem, rdDistGeom
 from rdkit.Chem.rdForceFieldHelpers import (
-    OptimizeMoleculeConfs,
     MMFFGetMoleculeForceField,
     MMFFGetMoleculeProperties,
+    OptimizeMoleculeConfs,
 )
 
 from .utils import rotation_matrix_from_vectors

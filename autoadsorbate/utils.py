@@ -1,16 +1,16 @@
 import itertools
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 
 import ase
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from ase import Atom
-from ase.optimize import BFGS
-from ase.io import read
-from ase.constraints import FixAtoms
-from ase.visualize.plot import plot_atoms
 from ase.build.tools import sort as sort_atoms
+from ase.constraints import FixAtoms
+from ase.io import read
+from ase.optimize import BFGS
 from ase.optimize.minimahopping import MinimaHopping
+from ase.visualize.plot import plot_atoms
 
 
 def rotation_matrix_from_vectors(vec1, vec2):

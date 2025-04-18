@@ -1,13 +1,12 @@
+import uuid
+from tempfile import NamedTemporaryFile
+from typing import List
+
 import numpy as np
 import pandas as pd
-import uuid
-from typing import List
 from ase.io import read, write
-from ase.mep import NEB
-from ase.optimize import BFGS
-from ase.mep import NEBTools
-from ase.optimize import FIRE
-from tempfile import NamedTemporaryFile
+from ase.mep import NEB, NEBTools
+from ase.optimize import BFGS, FIRE
 
 
 class popNEB:

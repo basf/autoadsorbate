@@ -1,4 +1,4 @@
-from autoadsorbate import Surface, Fragment
+from autoadsorbate import Fragment, Surface
 
 
 def test_Surface():

@@ -1,9 +1,10 @@
-import pandas as pd
-import numpy as np
 import itertools
-from ase.neb import NEB
-from ase import Atoms
 from typing import Union
+
+import numpy as np
+import pandas as pd
+from ase import Atoms
+from ase.neb import NEB
 
 
 def permute_image(atoms, fix_species=None):
@@ -676,8 +677,8 @@ def _swap_atoms_positions(
 
 
 def _get_permuted_indices(atoms):
-    from itertools import permutations
     from collections import OrderedDict
+    from itertools import permutations
 
     species_in_order = [atom.symbol for atom in atoms]
     species = list(OrderedDict.fromkeys(species_in_order))

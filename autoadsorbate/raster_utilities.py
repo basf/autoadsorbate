@@ -1,5 +1,6 @@
-from ase.build.tools import sort as ase_sort
 import numpy as np
+from ase.build.tools import sort as ase_sort
+
 # import matplotlib.image as mpimg
 # from ase.io import read, write
 # from ase.visualize import view

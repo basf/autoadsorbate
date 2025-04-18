@@ -1,13 +1,11 @@
-import numpy as np
-from glob import glob
+import sys
 import uuid
+from glob import glob
 
-from joblib import Parallel, delayed
-
+import numpy as np
 from ase.build import fcc211
 from ase.io import read, write
-
-import sys
+from joblib import Parallel, delayed
 
 sys.path.insert(0, "/gpfs/projects/qm_inorganics/notebook_edvin/git/autoadsorbate/")
 from autoadsorbate.autoadsorbate import Fragment, Surface

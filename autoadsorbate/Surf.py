@@ -1,13 +1,13 @@
 import itertools
+import math
 from copy import deepcopy
 
-import math
 import numpy as np
 import pandas as pd
 from ase import Atom, Atoms
 from scipy.spatial.distance import cdist
 
-from .utils import rotation_matrix_from_vectors, polar2cart
+from .utils import polar2cart, rotation_matrix_from_vectors
 
 
 def get_shrinkwrap_site_n_vector(
@@ -294,8 +294,9 @@ def get_shrinkwrap_grid(
         Atoms: Atoms object representing the shrinkwrap grid.
     """
 
-    from .raster_utilities import get_surface_from_rasterized_top_view
     from scipy.spatial.distance import cdist
+
+    from .raster_utilities import get_surface_from_rasterized_top_view
 
     if raster_speed_boost:
         raster_surf_index = get_surface_from_rasterized_top_view(
@@ -1042,7 +1043,7 @@ def _trilaterate(
     Raises:
         ValueError: If the three spheres do not intersect.
     """
-    from numpy import sqrt, dot, cross
+    from numpy import cross, dot, sqrt
     from numpy.linalg import norm
 
     temp1 = P2 - P1
@@ -1399,8 +1400,8 @@ def get_AFM_cartoon(atoms: Atoms, precision: float = 1, show_figure=False) -> No
     df = df.reindex(index=df.index[::-1])
 
     if show_figure:
-        import sns
         import matplotlib.pyplot as plt
+        import sns
 
         sns.heatmap(df)
         plt.axis("scaled")

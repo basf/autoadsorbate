@@ -4,8 +4,9 @@ __author__ = """Fakoe Edvin"""
 __email__ = "edvin.fako@basf.com"
 __version__ = "0.2.0"
 
-from os.path import dirname, basename, isfile, join
 import glob
+from os.path import basename, dirname, isfile, join
+
 from .autoadsorbate import *
 
 modules = glob.glob(join(dirname(__file__), "*.py"))

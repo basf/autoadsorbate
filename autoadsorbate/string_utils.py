@@ -1,4 +1,5 @@
 import itertools
+
 from .Smile import check_smile, remove_canonical_duplicates
 
 

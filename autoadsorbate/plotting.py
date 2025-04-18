@@ -1,8 +1,9 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
-from autoadsorbate.utils import count_C_next_to_O
 from ase.visualize.plot import plot_atoms
+
+from autoadsorbate.utils import count_C_next_to_O
 
 
 def gaussian(x, mu, sig):

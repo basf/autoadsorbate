@@ -556,7 +556,6 @@ def relaxatoms(atoms, calc, prefix, steps=300, freeze_bottom=False, fmax=0.05):
 
 
 def minhopatoms(atoms, calc, prefix, steps=10, fmax=0.05, temperature=1000):
-
     fname = f"{prefix}_{atoms.info['uid']}.xyz"
     atoms.calc = calc
 

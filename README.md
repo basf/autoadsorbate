@@ -12,14 +12,24 @@
 
 ## Installation
 
-The package is designed to be as lightweight as possible, to implement seamlessly into existing environments with complex dependecies. If you `git clone <autoadsorbate>` and jut `sys.path.insert(0, <path/to/autoadsorbate>)`, most likely it will just work.
+The package is designed to be as lightweight as possible, to implement seamlessly into existing environments with complex dependecies. If you `git clone <autoadsorbate>` and just `sys.path.insert(0, <path/to/autoadsorbate>)`, most likely it will work.
+
 - Built on only:
   - `ase`
   - `rdkit`
   - Basic Python packages: `pandas`, `numpy`
 
+The package is available on PyPi:
+
 ```python
 pip install autoadsorbate
+```
+
+Installation from source:
+ ```python
+git clone <autoadsorbate>
+cd autoadsorbate
+pip install .
 ```
 
 ## AutoAdsorbate

@@ -6,7 +6,7 @@ authors = [
     { name="Edvin Fako", email="edvinfako@gmail.com" }
 ]
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.7"
 license = "MIT"
 
 dependencies = [

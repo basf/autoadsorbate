@@ -70,12 +70,15 @@ Molecules and reactive species are both initialized as the Fragment object (base
 Let us initialize a molecule of dimethyl ether (DME):
 
 ```python
+from autoadsorbate import Fragment
+
 f = Fragment(smile = 'COC', to_initialize = 5)
 ```
 
 
 ```python
 from autoadsorbate import docs_plot_conformers
+
 conformer_trajectory = f.conformers
 fig = docs_plot_conformers(conformer_trajectory)
 ```
@@ -117,6 +120,7 @@ len(f.conformers)
 We can visualize these structures:
 ```python
 from autoadsorbate import docs_plot_conformers
+
 conformer_trajectory = f.conformers
 fig = docs_plot_conformers(conformer_trajectory)
 ```

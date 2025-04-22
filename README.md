@@ -70,12 +70,15 @@ Molecules and reactive species are both initialized as the Fragment object (base
 Let us initialize a molecule of dimethyl ether (DME):
 
 ```python
+from autoadsorbate import Fragment
+
 f = Fragment(smile = 'COC', to_initialize = 5)
 ```
 
 
 ```python
-from autoadsorbate.utils import docs_plot_conformers
+from autoadsorbate import docs_plot_conformers
+
 conformer_trajectory = f.conformers
 fig = docs_plot_conformers(conformer_trajectory)
 ```
@@ -100,7 +103,7 @@ This can be also done with a function:
 
 
 ```python
-from autoadsorbate.Smile import get_marked_smiles
+from autoadsorbate import get_marked_smiles
 marked_smile = get_marked_smiles(['COC'])[0]
 marked_smile
 ```
@@ -116,7 +119,8 @@ len(f.conformers)
 
 We can visualize these structures:
 ```python
-from autoadsorbate.utils import docs_plot_conformers
+from autoadsorbate import docs_plot_conformers
+
 conformer_trajectory = f.conformers
 fig = docs_plot_conformers(conformer_trajectory)
 ```
@@ -131,7 +135,7 @@ Now we can use the marker atom to orient our molecule:
 
 
 ```python
-from autoadsorbate.utils import docs_plot_sites
+from autoadsorbate import docs_plot_sites
 
 oriented_conformer_trajectory = [f.get_conformer(i) for i, _ in enumerate(f.conformers)]
 fig = docs_plot_conformers(oriented_conformer_trajectory)
@@ -370,7 +374,7 @@ site_atoms.info
 We can visualize a few surface sites:
 
 ```python
-from autoadsorbate.utils import docs_plot_sites
+from autoadsorbate import docs_plot_sites
 fig = docs_plot_sites(s)
 ```
 
@@ -480,7 +484,7 @@ plot_atoms(s.view_surface(return_atoms=True))
 Simple methods of brute force SMILES enumeration are implemented as well. For example, only using a few lines of code we can initialize multiple conformers of all reaction intermediaries in the nitrogen hydrogenation reaction. A template of the required information can be found here:
 
 ```python
-from autoadsorbate.string_utils import _example_config
+from autoadsorbate import _example_config
 _example_config
 ```
 
@@ -498,7 +502,7 @@ _example_config
 Now we can use (or edit) this information as we see fit:
 
 ```python
-from autoadsorbate.string_utils import construct_smiles
+from autoadsorbate import construct_smiles
  
 config = {
 'backbone_info': {'C': 0, 'O': 0, 'N':2},
@@ -600,11 +604,11 @@ len(trj)
 
     52
 
-From the list of initilazied conformers we can remove the ones that are efectively identical:
+From the list of initialized conformers we can remove the ones that are effectively identical:
 
 
 ```python
-from autoadsorbate.utils import get_drop_snapped
+from autoadsorbate import get_drop_snapped
  
 xtrj = get_drop_snapped(trj, d_cut=1.5)
 len(xtrj)
@@ -652,7 +656,7 @@ A autonomous mode of Fragment placement on Surface is also implemented. The meth
 
 ```python
 from ase.build import fcc211
-from autoadsorbate.autoadsorbate import Surface, Fragment
+from autoadsorbate import Surface, Fragment
 
 slab = fcc211(symbol = 'Cu', size=(6,3,3), vacuum=10)  # any ase.Atoms object
 s=Surface(slab, touch_sphere_size=2.7)                 # finding all surface atoms

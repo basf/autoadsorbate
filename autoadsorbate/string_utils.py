@@ -1,5 +1,7 @@
 import itertools
+
 from .Smile import check_smile, remove_canonical_duplicates
+
 
 def make_base(backbone_info):
     """
@@ -17,6 +19,7 @@ def make_base(backbone_info):
             base.append(specie)
     return base
 
+
 def get_all_bases(backbone_info):
     """
     Generates all unique permutations of atomic species based on the provided backbone information.
@@ -30,6 +33,7 @@ def get_all_bases(backbone_info):
     base = make_base(backbone_info)
     return list(set(list(itertools.permutations(base))))
 
+
 def get_all_backbones(backbone_info):
     """
     Generates all unique permutations of atomic species based on the provided backbone information.
@@ -42,6 +46,7 @@ def get_all_backbones(backbone_info):
     """
     base = make_base(backbone_info)
     return list(set(list(itertools.permutations(base))))
+
 
 #     base = make_base(backbone_info)
 #     return get_all_bases(base)
@@ -59,15 +64,16 @@ def get_all_huged_backbones(backbone, a, b):
     Returns:
     list: A list of lists, each containing a unique backbone with the two atomic species inserted.
     """
-    rng = [n for n in range(0, len(backbone)+1)]
+    rng = [n for n in range(0, len(backbone) + 1)]
     out_trj = []
     for i in rng:
-        for j in rng[i+1:]:
+        for j in rng[i + 1 :]:
             bckb = list(backbone).copy()
             bckb.insert(i, a)
-            bckb.insert(j+1, b)
+            bckb.insert(j + 1, b)
             out_trj.append(bckb)
     return out_trj
+
 
 def get_cl_marked(backbones):
     """
@@ -81,9 +87,10 @@ def get_cl_marked(backbones):
     """
     out_trj = []
     for backbone in backbones:
-        x = ['Cl'] + list(backbone)
+        x = ["Cl"] + list(backbone)
         out_trj.append(x)
     return out_trj
+
 
 def get_s1s_marked(backbones):
     """
@@ -98,15 +105,16 @@ def get_s1s_marked(backbones):
     out_trj = []
     for backbone in backbones:
         backbone = list(backbone)
-        rng = [n for n in range(0, len(backbone)+1)]
-        
+        rng = [n for n in range(0, len(backbone) + 1)]
+
         for i in [0]:
-            for j in rng[i+1:]:
+            for j in rng[i + 1 :]:
                 bckb = backbone.copy()
-                bckb.insert(i, 'S1S')
-                bckb.insert(j+1, '1')
+                bckb.insert(i, "S1S")
+                bckb.insert(j + 1, "1")
                 out_trj.append(bckb)
     return out_trj
+
 
 def insert_unsaturated_bond(backbones, bond):
     """
@@ -122,10 +130,10 @@ def insert_unsaturated_bond(backbones, bond):
     out_trj = []
     for backbone in backbones:
         backbone = list(backbone)
-        rng = [n for n in range(0, len(backbone)+1)]
-        
+        rng = [n for n in range(0, len(backbone) + 1)]
+
         for i in [0]:
-            for j in rng[i+1:]:
+            for j in rng[i + 1 :]:
                 bckb = backbone.copy()
                 # bckb.insert(i, 'S1S')
                 bckb.insert(j, bond)
@@ -145,7 +153,7 @@ def get_all_side_chains(backbones):
     """
     out_trj = []
     for backbone in backbones:
-        out_trj += get_all_huged_backbones(backbone, '(', ')')
+        out_trj += get_all_huged_backbones(backbone, "(", ")")
     # rng = [n for n in range(0, len(backbone)+1)]
     # out_trj = []
     # for i in rng:
@@ -155,6 +163,7 @@ def get_all_side_chains(backbones):
     #         bckb.insert(j+1, ')')
     #         out_trj.append(bckb)
     return out_trj
+
 
 def get_rings(backbone, ring_marker):
     """
@@ -170,6 +179,7 @@ def get_rings(backbone, ring_marker):
     out_trj = get_all_huged_backbones(backbone, str(ring_marker), str(ring_marker))
     return out_trj
 
+
 def get_all_ringed(backbones, ring_marker):
     """
     Generates all possible ring structures for each backbone in the provided list of backbones by inserting a ring marker at various positions.
@@ -184,7 +194,7 @@ def get_all_ringed(backbones, ring_marker):
     out_trj = []
     for backbone in backbones:
         backbone = list(backbone)
-        out_trj+=get_rings(backbone, ring_marker)
+        out_trj += get_rings(backbone, ring_marker)
     return out_trj
 
 
@@ -205,10 +215,11 @@ def make_unsaturated(backbone, brackets):
         for closed_bracket in brackets[1:]:
             bckb = backbone.copy()
             if open_bracket not in bckb[i]:
-                bckb[i] = f'{open_bracket}{bckb[i]}{closed_bracket}'
+                bckb[i] = f"{open_bracket}{bckb[i]}{closed_bracket}"
                 unsaturated.append(bckb)
-            
-    return unsaturated        
+
+    return unsaturated
+
 
 def make_all_unsaturated_backbones(all_backbones, brackets):
     """
@@ -226,6 +237,7 @@ def make_all_unsaturated_backbones(all_backbones, brackets):
         for _ in range(len(backbone)):
             all_unsaturated_backbones += make_unsaturated(backbone, brackets)
 
+
 def get_all_unsaturated_from_backbone(backbone, brackets, return_dict=False):
     """
     Generates all possible unsaturated structures from a backbone by inserting brackets around each atomic species.
@@ -240,22 +252,23 @@ def get_all_unsaturated_from_backbone(backbone, brackets, return_dict=False):
                   If return_dict is True, returns a dictionary where keys are the number of unsaturated positions and values are the corresponding backbones.
     """
     multiple_unsaturated = {}
-    
+
     for i in range(len(backbone)):
         if i == 0:
-            multiple_unsaturated[i+1] = make_unsaturated(backbone, brackets)
+            multiple_unsaturated[i + 1] = make_unsaturated(backbone, brackets)
         else:
             unsaturated = []
             for bckb in multiple_unsaturated[i]:
                 unsaturated += make_unsaturated(bckb, brackets)
-                multiple_unsaturated[i+1] = unsaturated
+                multiple_unsaturated[i + 1] = unsaturated
     if return_dict:
         return multiple_unsaturated
     else:
         lst = []
         for k, v in multiple_unsaturated.items():
-            lst+=v
+            lst += v
         return lst
+
 
 def get_checked_smiles(smiles_list):
     """
@@ -273,6 +286,7 @@ def get_checked_smiles(smiles_list):
             checked_smiles.append(s)
     return checked_smiles
 
+
 def get_smiles_from_backbones(backbones):
     """
     Converts a list of backbones into their corresponding SMILES strings.
@@ -285,8 +299,9 @@ def get_smiles_from_backbones(backbones):
     """
     smiles = []
     for backbone in backbones:
-        smiles.append(''.join(backbone))
+        smiles.append("".join(backbone))
     return smiles
+
 
 def xx_get_special_symbols(config):
     """
@@ -299,8 +314,10 @@ def xx_get_special_symbols(config):
     dict: A dictionary where keys are atomic symbols and values are lists of special symbols.
     """
     special_symbols = {}
-    for symbol, _ in config['backbone_info'].items():
-        special_symbols[symbol] = [symbol] + [f'[{symbol}{marker}' for marker in config['specials']]
+    for symbol, _ in config["backbone_info"].items():
+        special_symbols[symbol] = [symbol] + [
+            f"[{symbol}{marker}" for marker in config["specials"]
+        ]
     return special_symbols
 
 
@@ -315,10 +332,10 @@ def xx_unpack_symbols(config):
     list: A list of lists, where each sublist contains unpacked symbols for each atomic species.
     """
     special_symbols = xx_get_special_symbols(config)
-    print('special_symbols: ', special_symbols)
-    
+    print("special_symbols: ", special_symbols)
+
     unpacked_symbols = []
-    for symbol, value in config['backbone_info'].items():
+    for symbol, value in config["backbone_info"].items():
         print(symbol, value)
         if value == 0:
             continue
@@ -327,15 +344,16 @@ def xx_unpack_symbols(config):
             unpacked_symbols.append(tuple(special_symbols[symbol]))
         if value > 1:
             lst = list(itertools.product(special_symbols[symbol], repeat=value))
-            print('lst: ',lst)
+            print("lst: ", lst)
             # joined_lst_elements = [''.join(t) for t in lst]
             joined_lst_elements = [list(t) for t in lst]
-            print('joined_lst_elements: ',joined_lst_elements)
+            print("joined_lst_elements: ", joined_lst_elements)
             unpacked_symbols.append(joined_lst_elements)
             # for group in list(itertools.product(special_symbols[symbol], repeat=value)):
             #     unpacked_symbols.append(list(group))
             #     print(unpacked_symbols)
     return unpacked_symbols
+
 
 def xx_get_all_backbones(config):
     """
@@ -349,9 +367,10 @@ def xx_get_all_backbones(config):
     """
     unpacked_symbols = xx_unpack_symbols(config)
     print(unpacked_symbols)
-    print('xxxx')
+    print("xxxx")
     all_backbones = list(itertools.product(*unpacked_symbols))
     return all_backbones
+
 
 def concat_tuples(list_of_tuples):
     """
@@ -365,9 +384,9 @@ def concat_tuples(list_of_tuples):
     """
     t = ()
     for x in list_of_tuples:
-        t+=x
+        t += x
     return t
-    
+
 
 def construct_smiles(config):
     """
@@ -381,39 +400,40 @@ def construct_smiles(config):
         - 'ring_marker' (str): The marker to be used for indicating ring positions.
         - 'make_labeled' (bool): Whether to label the backbones with special markers.
         - 'specials' (list): A list of special markers to be used for labeling.
-    
+
     Returns:
     list: A list of unique SMILES strings generated based on the configuration.
     """
-    basic_backbones = get_all_backbones(config['backbone_info'])
-    
-    multiple_unsaturated=[]
+    basic_backbones = get_all_backbones(config["backbone_info"])
+
+    multiple_unsaturated = []
     for backbone in basic_backbones:
-        backbone=list(backbone)
-        multiple_unsaturated += get_all_unsaturated_from_backbone(backbone,config['brackets'])
-    
-    all_backbones = basic_backbones+multiple_unsaturated
-    
+        backbone = list(backbone)
+        multiple_unsaturated += get_all_unsaturated_from_backbone(
+            backbone, config["brackets"]
+        )
+
+    all_backbones = basic_backbones + multiple_unsaturated
+
     all_backbones += get_all_side_chains(all_backbones)
-    
-    if config['allow_intramolec_rings']:
-        ring_backbones = get_all_ringed(all_backbones, config['ring_marker'])
+
+    if config["allow_intramolec_rings"]:
+        ring_backbones = get_all_ringed(all_backbones, config["ring_marker"])
         all_backbones += ring_backbones
 
-    
-    if config['make_labeled']:
+    if config["make_labeled"]:
         cl_backbones = get_cl_marked(all_backbones)
         s1s_backbones = get_s1s_marked(all_backbones)
         all_backbones = cl_backbones + s1s_backbones
 
-    double = insert_unsaturated_bond(all_backbones, '=')
-    triple = insert_unsaturated_bond(all_backbones, '#')
+    double = insert_unsaturated_bond(all_backbones, "=")
+    triple = insert_unsaturated_bond(all_backbones, "#")
     all_backbones += double
-    all_backbones +=triple
+    all_backbones += triple
 
     print(all_backbones[-10:])
     smiles_list = get_smiles_from_backbones(all_backbones)
-    
+
     checked_smiles = get_checked_smiles(smiles_list)
     smiles = remove_canonical_duplicates(checked_smiles)
 
@@ -421,17 +441,14 @@ def construct_smiles(config):
 
 
 _example_config = {
-    'backbone_info' : {
-        'C': 1,
-        'N': 0,
-        'O':2
-    },
-    'allow_intramolec_rings' : True,
-    'ring_marker': 2,
-    'side_chain' : ['(', ')'],
-    'brackets' : ['[', ']', 'H2]', 'H3]', 'H-]', 'H+]'],#, '-]', '--]', '---]']
-    'make_labeled': True
+    "backbone_info": {"C": 1, "N": 0, "O": 2},
+    "allow_intramolec_rings": True,
+    "ring_marker": 2,
+    "side_chain": ["(", ")"],
+    "brackets": ["[", "]", "H2]", "H3]", "H-]", "H+]"],  # , '-]', '--]', '---]']
+    "make_labeled": True,
 }
 
+
 def _show_ussage():
-    print('eg ussage: smiles = construct_smiles(config)')
+    print("eg ussage: smiles = construct_smiles(config)")

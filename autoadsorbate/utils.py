@@ -578,15 +578,14 @@ def minhopatoms(atoms, calc, prefix, steps=10, fmax=0.05, temperature=1000):
 
     return atoms.get_potential_energy()
 
-
-def get_blenderized(traj, scale=[1, 1, 1], hide_spot="default"):
+def get_blenderized(traj, scale=[1,1,1], hide_spot=[0,0,0], wrap_frames=False):
     """
     Prepares a trajectory for visualization in Blender by scaling and adding hidden atoms to ensure consistent atom counts.
 
     Parameters:
     traj (list): A list of atomic structures representing the trajectory.
-    scale (list): A list of three integers representing the scaling factors for the x, y, and z dimensions. Default is [3, 3, 1].
-    hide_spot (str or list): The position to place hidden atoms. If 'default', the position is set to the center of the cell. Default is 'default'.
+    scale (list): A list of three integers representing the scaling factors for the x, y, and z dimensions. Default is [1, 1, 1].
+    hide_spot (str or list): The position to place hidden atoms. 
 
     Returns:
     list: A list of atomic structures prepared for visualization in Blender.
@@ -595,20 +594,20 @@ def get_blenderized(traj, scale=[1, 1, 1], hide_spot="default"):
     max_atoms_dict = get_max_atoms_dict(traj)
 
     for t in traj:
-        a = t.copy()
-        a.positions += [0, 0.4, 0]
-        a.wrap()
-
-        if hide_spot == "default":
-            hide_spot = a.cell[0] * 0.5 + a.cell[1] * 0.5
+        a=t.copy()
+        a.positions += [0,.4,0]
+        if wrap_frames:
+            a.wrap()
 
         for s, no in max_atoms_dict.items():
-            n_atom_to_add = no - len([atom for atom in a if atom.symbol == s])
+
+            n_atom_to_add = no - len([atom for atom in a if atom.symbol==s])
 
             for n in range(n_atom_to_add):
                 a.append(Atom(s, hide_spot))
 
-        a = a * scale
+
+        a = a*scale
         blenderized_trj.append(a)
 
     return blenderized_trj

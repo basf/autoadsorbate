@@ -155,6 +155,9 @@ class Surface:
             self.site_df = pd.DataFrame(self.site_dict)
             self.sort_site_df()
 
+        self.surf_inds = list(set([i for t in list(self.site_df.topology.values) for i in t]))
+
+
     def sort_site_df(self, by: str = "xyz"):
         """
         Sorts the site DataFrame by coordinates or distance.

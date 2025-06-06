@@ -54,7 +54,8 @@ def fibonacci_sphere(center, radius, point_distance):
 
     return np.stack((x, y, z), axis=-1)
 
-def move_sphere_points_toward_center(sphere_points, center, point_cloud, touch_criteria, step_size=0.01, max_steps=1000):
+def move_sphere_points_toward_center(sphere_points, center, point_cloud,
+                                     touch_criteria, step_size=0.01, max_steps=1000):
     """
     Move each point on the sphere toward the center until it's within `touch_criteria`
     of any point in the point_cloud.
@@ -215,7 +216,8 @@ def get_shrinkwrap_particle_ads_sites(
     particle_atoms: Atoms,
     grid_mode = 'fibonacci',
     precision: float = 1.,
-    touch_sphere_size: float = 3.
+    touch_sphere_size: float = 3.,
+    return_grids = False
 ):
     """Identifies adsorption sites on a surface using a shrinkwrap grid.
 
@@ -225,6 +227,7 @@ def get_shrinkwrap_particle_ads_sites(
         precision (float): Precision for the shrinkwrap grid.
         touch_sphere_size (float): Radius to consider for grid points.
         return_trj (bool): Whether to return the trajectory for demo mode.
+        return_grids (bool): dev/visualization option.
 
     Returns:
         dict: Dictionary containing site information.
@@ -264,5 +267,8 @@ def get_shrinkwrap_particle_ads_sites(
                                  particle_atoms=particle_atoms,
                                  shrinkwrap=shrinkwrap,
                                  threshold=touch_sphere_size+touch_buffer)
+    
+    if return_grids:
+        return [Atoms(['He']*len(grid), grid), Atoms(['He']*len(shrinkwrap), shrinkwrap), ]
     
     return sites_dict

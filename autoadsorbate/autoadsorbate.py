@@ -1,6 +1,6 @@
 """Main module."""
 
-from typing import Dict, List
+from typing import Dict, List, Literal
 
 import ase
 import numpy as np
@@ -19,6 +19,7 @@ from .utils import (
     make_site_info_writable,
 )
 
+from .Particle import get_shrinkwrap_particle_ads_sites
 
 class Intermediate:
     """
@@ -129,7 +130,7 @@ class Surface:
         atoms: Atoms,
         precision: float = 0.25,
         touch_sphere_size: float = 3,
-        dummy: bool = False,
+        mode: Literal['slab', 'particle', 'dummy'] = 'slab',
     ):
         """
         Initialize attributes.
@@ -139,16 +140,27 @@ class Surface:
             precision (float, optional): The precision for the grid spacing. Defaults to 0.25.
             touch_sphere_size (float, optional): The size of the touch sphere. Defaults to 3.
         """
-        self.dummy = dummy
+        self.mode = mode
         self.atoms = atoms
         self.precision = precision
         self.touch_sphere_size = touch_sphere_size
-        if self.dummy:
+        
+        if self.mode == 'dummy':
             self.site_dict = {}
             self.site_df = pd.DataFrame(self.site_dict)
-        else:
+            
+        elif self.mode == 'slab':
             self.site_dict = get_shrinkwrap_ads_sites(
                 atoms=self.atoms,
+                precision=self.precision,
+                touch_sphere_size=self.touch_sphere_size,
+            )
+            self.site_df = pd.DataFrame(self.site_dict)
+            self.sort_site_df()
+            
+        elif self.mode == 'particle':
+            self.site_dict = get_shrinkwrap_particle_ads_sites(
+                particle_atoms=self.atoms,
                 precision=self.precision,
                 touch_sphere_size=self.touch_sphere_size,
             )

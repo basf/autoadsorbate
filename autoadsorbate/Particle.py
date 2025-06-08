@@ -1,32 +1,83 @@
 import numpy as np
 from ase import Atoms
 
-def grid_sphere(center, radius, num_theta=36, num_phi=18):
-    """
-    Generate a grid of points evenly spaced along a sphere surface.
+def subdivisions_for_min_edge_length(d_min, radius=1.0):
+    return max(int(np.floor(2 * radius / d_min)), 1)
 
-    Parameters:
-    - center: tuple or array of shape (3,), the (x, y, z) center of the sphere
-    - radius: float, the radius of the sphere
-    - num_theta: int, number of divisions along azimuthal angle (longitude)
-    - num_phi: int, number of divisions along polar angle (latitude)
+def grid_round_cube(radius=1.0, center=(0, 0, 0), d_min=0.1):
+    center = np.array(center, dtype=np.float32)
+    subdivisions = subdivisions_for_min_edge_length(d_min, radius)
 
-    Returns:
-    - numpy array of shape (num_phi * num_theta, 3) with Cartesian coordinates
-    """
-    theta = np.linspace(0, 2 * np.pi, num_theta, endpoint=False)
-    phi = np.linspace(0, np.pi, num_phi, endpoint=True)
+    lin = np.linspace(-1, 1, subdivisions + 1)
+    grid = np.array(np.meshgrid(lin, lin, lin)).reshape(3, -1).T
 
-    theta, phi = np.meshgrid(theta, phi)
-    theta = theta.flatten()
-    phi = phi.flatten()
+    mask = np.any(np.isclose(np.abs(grid), 1.0), axis=1)
+    cube_surface_pts = grid[mask]
+    vert_idx_map = {tuple(v): i for i, v in enumerate(cube_surface_pts)}
 
-    x = radius * np.sin(phi) * np.cos(theta) + center[0]
-    y = radius * np.sin(phi) * np.sin(theta) + center[1]
-    z = radius * np.cos(phi) + center[2]
+    def spherify(v):
+        x, y, z = v[:, 0], v[:, 1], v[:, 2]
+        x2, y2, z2 = x**2, y**2, z**2
+        sx = x * np.sqrt(1 - (y2 + z2)/2 + (y2 * z2)/3)
+        sy = y * np.sqrt(1 - (z2 + x2)/2 + (z2 * x2)/3)
+        sz = z * np.sqrt(1 - (x2 + y2)/2 + (x2 * y2)/3)
+        return np.column_stack([sx, sy, sz])
 
-    points = np.stack([x, y, z], axis=-1)
-    return points
+    vertices = spherify(cube_surface_pts) * radius + center
+    faces = []
+    for axis in range(3):
+        for sign in [-1, 1]:
+            coord = sign
+            mask = np.isclose(cube_surface_pts[:, axis], coord)
+            face_pts = cube_surface_pts[mask]
+            u_axis, v_axis = [i for i in range(3) if i != axis]
+            sorted_idx = np.lexsort((face_pts[:, v_axis], face_pts[:, u_axis]))
+            face_pts = face_pts[sorted_idx]
+
+            for i in range(subdivisions):
+                for j in range(subdivisions):
+                    def get_index(di, dj):
+                        pt = np.zeros(3)
+                        pt[axis] = coord
+                        pt[u_axis] = lin[i + di]
+                        pt[v_axis] = lin[j + dj]
+                        return vert_idx_map[tuple(pt)]
+
+                    a = get_index(0, 0)
+                    b = get_index(1, 0)
+                    c = get_index(1, 1)
+                    d = get_index(0, 1)
+                    faces.append([a, b, c, d])
+
+    faces = np.array(faces, dtype=np.int32)
+
+    # Ensure outward-facing winding
+    centers = vertices[faces].mean(axis=1)
+    normals = np.cross(
+        vertices[faces][:, 1] - vertices[faces][:, 0],
+        vertices[faces][:, 2] - vertices[faces][:, 1]
+    )
+    outward = centers - center
+    if np.mean(np.einsum('ij,ij->i', normals, outward)) < 0:
+        faces = faces[:, ::-1]
+
+    # Compute per-vertex normals (area-weighted face normals)
+    vnormals = np.zeros_like(vertices)
+    face_normals = np.cross(
+        vertices[faces][:, 1] - vertices[faces][:, 0],
+        vertices[faces][:, 2] - vertices[faces][:, 1]
+    )
+    face_areas = np.linalg.norm(face_normals, axis=1, keepdims=True)
+    face_normals_unit = face_normals / np.maximum(face_areas, 1e-10)
+
+    for i, face in enumerate(faces):
+        for j in face:
+            vnormals[j] += face_normals_unit[i]
+
+    vnormals /= np.linalg.norm(vnormals, axis=1, keepdims=True)
+
+    return [vertices.astype(np.float32), faces.astype(np.int32), vnormals.astype(np.float32)]
+
 
 def fibonacci_sphere(center, radius, point_distance):
     """
@@ -52,7 +103,7 @@ def fibonacci_sphere(center, radius, point_distance):
     y = radius * np.sin(phi) * np.sin(theta) + center[1]
     z = radius * np.cos(phi) + center[2]
 
-    return np.stack((x, y, z), axis=-1)
+    return [np.stack((x, y, z), axis=-1)]
 
 def move_sphere_points_toward_center(sphere_points, center, point_cloud,
                                      touch_criteria, step_size=0.01, max_steps=1000):
@@ -217,7 +268,7 @@ def get_shrinkwrap_particle_ads_sites(
     grid_mode = 'fibonacci',
     precision: float = 1.,
     touch_sphere_size: float = 3.,
-    return_grids = False
+    return_geometry = False
 ):
     """Identifies adsorption sites on a surface using a shrinkwrap grid.
 
@@ -227,7 +278,7 @@ def get_shrinkwrap_particle_ads_sites(
         precision (float): Precision for the shrinkwrap grid.
         touch_sphere_size (float): Radius to consider for grid points.
         return_trj (bool): Whether to return the trajectory for demo mode.
-        return_grids (bool): dev/visualization option.
+        return_geometry (bool): dev/visualization option.
 
     Returns:
         dict: Dictionary containing site information.
@@ -244,9 +295,10 @@ def get_shrinkwrap_particle_ads_sites(
     grid_radius = particle_radius + touch_sphere_size + 0.5 # 0.5 is safety buffer
     
     if grid_mode == 'fibonacci':
-        grid = fibonacci_sphere(center=center, radius=grid_radius, point_distance=precision)
-    elif grid_mode == 'grid':
-        grid = grid_sphere(center=center, radius=grid_radius, num_theta=36, num_phi=18) # never useful?
+        grid = fibonacci_sphere(center=center, radius=grid_radius, point_distance=precision)[0]
+    elif grid_mode == 'round_cube':
+        round_cube_geometry = grid_round_cube(center=center, radius=grid_radius, d_min=precision)
+        grid = round_cube_geometry[0]
     else:
         raise ValueError('grid_mode supported: fibonacci, grid')
 
@@ -268,7 +320,9 @@ def get_shrinkwrap_particle_ads_sites(
                                  shrinkwrap=shrinkwrap,
                                  threshold=touch_sphere_size+touch_buffer)
     
-    if return_grids:
-        return [Atoms(['He']*len(grid), grid), Atoms(['He']*len(shrinkwrap), shrinkwrap), ]
+    if return_geometry:
+        _, faces, __ = round_cube_geometry
+        return shrinkwrap, faces
+
     
     return sites_dict

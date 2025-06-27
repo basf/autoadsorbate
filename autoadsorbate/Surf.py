@@ -429,10 +429,10 @@ def assign_fragment(atoms: Atoms, fragment: Atoms) -> tuple:
     """
     if "fragments" not in atoms.arrays:
         fragment_index = 0
+        atoms.arrays["fragments"] = np.full(len(atoms), fragment_index, dtype=int)
     else:
         fragment_index = max(atoms.arrays["fragments"])
 
-    atoms.arrays["fragments"] = np.full(len(atoms), fragment_index, dtype=int)
     fragment.arrays["fragments"] = np.full(len(fragment), fragment_index + 1, dtype=int)
 
     return atoms, fragment

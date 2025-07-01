@@ -111,6 +111,19 @@ class Fragment:
         if return_traj:
             return traj
         view(traj)
+    
+    def get_chemical_formula(self, empirical=True):
+        """
+        Function that makes is easy to get the chemical formulas of surrogate smiles.
+        Returns atoms.get_chemical_formula(empirical=empirical) for the NON_SURROGATE atoms in Fragment.
+        Is not surrogate smiles returns same ase atoms.get_chemical_formula(empirical=empirical).
+        """
+        if self.smile[:2] == 'Cl':
+            return self.conformers[0][2:].get_chemical_formula(empirical=empirical)
+        elif self.smile[:1] == 'S1S':
+            return self.conformers[0][3:].get_chemical_formula(empirical=empirical)
+        else:
+            return self.conformers[0].get_chemical_formula(empirical=empirical)
 
 
 class Surface:

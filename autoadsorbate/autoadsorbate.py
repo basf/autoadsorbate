@@ -120,7 +120,7 @@ class Fragment:
         """
         if self.smile[:2] == 'Cl':
             return self.conformers[0][1:].get_chemical_formula(empirical=empirical)
-        elif self.smile[:1] == 'S1S':
+        elif self.smile[:3] == 'S1S':
             return self.conformers[0][2:].get_chemical_formula(empirical=empirical)
         else:
             return self.conformers[0].get_chemical_formula(empirical=empirical)

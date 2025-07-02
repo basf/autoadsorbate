@@ -700,8 +700,9 @@ for  fragment in fragments:
     SUCCESS! Found the requested numer of conformers with condition: ovelap_thr = 1.6. Found 5 / 5.
     out_trj  44
 
-
+You can visualize a onfiguration in ASE with:
 
 ```python
-
+from ase.visualize import view
+view(out_trj[0])
 ```

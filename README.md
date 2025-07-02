@@ -67,6 +67,15 @@ Molecules and reactive species are both initialized as the Fragment object (base
 
 #### Molecules
 
+Before to follow this guide, you need to load the following packages:
+```python
+import matplotlib.pyplot as plt 
+from autoadsorbate import Fragment, Surface, docs_plot_conformers, get_marked_smiles, get_drop_snapped, docs_plot_sites, _example_config,  construct_smiles
+from ase.visualize.plot import plot_atoms
+from ase import Atoms
+```
+
+
 Let us initialize a molecule of dimethyl ether (DME):
 
 ```python
@@ -77,10 +86,12 @@ f = Fragment(smile = 'COC', to_initialize = 5)
 
 
 ```python
+import matplotlib.pyplot as plt
 from autoadsorbate import docs_plot_conformers
 
 conformer_trajectory = f.conformers
 fig = docs_plot_conformers(conformer_trajectory)
+plt.show()
 ```
 
 
@@ -97,7 +108,7 @@ Notice that we had to make two adjustments to the SMILES string. To replace the 
     - ```COC``` original
     - ```CO(Cl)C``` add Cl instead of the O lone pair (this is an invalid SMILES)
     - ```C[O+](Cl)C``` trick to make the valence work
-    - ```Cl[O+](C)C``` rearrange so taht the SMILES string starts with the marker first (for easy book keeping)
+    - ```Cl[O+](C)C``` rearrange so that the SMILES string starts with the marker first (for easy book keeping)
 
 This can be also done with a function:
 
@@ -109,7 +120,7 @@ marked_smile
 ```
     'Cl[O+](C)(C)'
 
-These surrogate smilles san now be used to initialize a Fragment object (we can set the number of randoms conformers to be initialized):
+These surrogate smilles can now be used to initialize a Fragment object (we can set the number of randoms conformers to be initialized):
 
 ```python
 f = Fragment(smile = 'Cl[O+](C)(C)', to_initialize = 5)
@@ -119,10 +130,9 @@ len(f.conformers)
 
 We can visualize these structures:
 ```python
-from autoadsorbate import docs_plot_conformers
-
 conformer_trajectory = f.conformers
 fig = docs_plot_conformers(conformer_trajectory)
+plt.show()
 ```
 
 
@@ -139,6 +149,7 @@ from autoadsorbate import docs_plot_sites
 
 oriented_conformer_trajectory = [f.get_conformer(i) for i, _ in enumerate(f.conformers)]
 fig = docs_plot_conformers(oriented_conformer_trajectory)
+plt.show()
 ```
 
 
@@ -153,6 +164,7 @@ We can also easily remove the marker:
 ```python
 clean_conformer_trajectory = [atoms[1:] for atoms in oriented_conformer_trajectory]
 fig = docs_plot_conformers(clean_conformer_trajectory)
+plt.show()
 ```
 
 
@@ -170,6 +182,7 @@ Methoxy
 f = Fragment(smile = 'ClOC', to_initialize = 5)
 oriented_conformer_trajectory = [f.get_conformer(i) for i, _ in enumerate(f.conformers)]
 fig = docs_plot_conformers(oriented_conformer_trajectory)
+plt.show()
 ```
 
 
@@ -185,6 +198,7 @@ fig = docs_plot_conformers(oriented_conformer_trajectory)
 f = Fragment(smile = 'ClC', to_initialize = 5)
 oriented_conformer_trajectory = [f.get_conformer(i) for i, _ in enumerate(f.conformers)]
 fig = docs_plot_conformers(oriented_conformer_trajectory)
+plt.show()
 ```
 
 
@@ -202,6 +216,7 @@ bound through single site:
 f = Fragment(smile = 'Cl[OH+]CC(O)C', to_initialize = 5)
 oriented_conformer_trajectory = [f.get_conformer(i) for i, _ in enumerate(f.conformers)]
 fig = docs_plot_conformers(oriented_conformer_trajectory)
+plt.show()
 ```
 
 
@@ -217,6 +232,7 @@ Coordinated withboth hydroxil:
 f = Fragment(smile = 'S1S[OH+]CC([OH+]1)C', to_initialize = 5)
 oriented_conformer_trajectory = [f.get_conformer(i) for i, _ in enumerate(f.conformers)]
 fig = docs_plot_conformers(oriented_conformer_trajectory)
+plt.show()
 ```
 
 
@@ -376,6 +392,7 @@ We can visualize a few surface sites:
 ```python
 from autoadsorbate import docs_plot_sites
 fig = docs_plot_sites(s)
+plt.show()
 ```
 
 
@@ -481,7 +498,7 @@ plot_atoms(s.view_surface(return_atoms=True))
 
 ## Making surogate SMILES automatically
 
-Simple methods of brute force SMILES enumeration are implemented as well. For example, only using a few lines of code we can initialize multiple conformers of all reaction intermediaries in the nitrogen hydrogenation reaction. A template of the required information can be found here:
+Simple methods of brute force SMILES enumeration are implemented as well. For example, only using a few lines of code we can initialize multiple conformers of all reaction intermediates in the nitrogen hydrogenation reaction. A template of the required information can be found here:
 
 ```python
 from autoadsorbate import _example_config
@@ -608,7 +625,7 @@ From the list of initialized conformers we can remove the ones that are effectiv
 
 
 ```python
-from autoadsorbate import get_drop_snapped
+from autoadsorbate import get_drop_snapped 
  
 xtrj = get_drop_snapped(trj, d_cut=1.5)
 len(xtrj)
@@ -642,6 +659,7 @@ for i, ax in enumerate(axs.flatten()):
     ax.set_ylim(-0.5, 5.5)
  
 fig.set_layout_engine(layout='tight')
+plt.show()
 ```
 
 

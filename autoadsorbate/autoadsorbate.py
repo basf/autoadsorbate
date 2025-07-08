@@ -1,6 +1,6 @@
 """Main module."""
 
-from typing import Dict, List, Literal
+from typing import Dict, List, Literal, Union
 
 import ase
 import numpy as np
@@ -84,7 +84,10 @@ class Fragment:
             self.conformers = get_sorted_by_snap_dist(self.conformers)
 
     def get_conformer(
-        self, i: int, n_vector: np.ndarray = np.array([0, 0, 1]), rot_deg: float = 0
+        self,
+        i: Union[int, float],
+        n_vector: np.ndarray = np.array([0, 0, 1]),
+        rot_deg: float = 0
     ) -> Atoms:
         """
         Returns a copy of the i-th conformer, aligned and rotated as specified.
@@ -101,6 +104,16 @@ class Fragment:
             self.conformers[i] = _reset_position(self.conformers[i])
             self.conformers[i] = _reset_rotation(self.conformers[i])
             self.conformers_aligned[i] = True
+
+        # Resolve index
+        if isinstance(i, float):
+            if not (0.0 <= i <= 1.0):
+                raise ValueError("Float index must be between 0 and 1.")
+            position = int(i * self.to_initialize)
+            position = min(position, self.to_initialize - 1)  # clamp to valid range
+            i = position
+        elif i > self.to_initialize:
+            raise KeyError(f"Index {i} is larger than nnumber of initialized conformers.")
 
         self.conformers[i].rotate(rot_deg, n_vector)
         self.conformers[i].info["smiles"] = self.smile
@@ -231,7 +244,7 @@ class Surface:
         # del site_atoms[:-1]
         # return site_atoms
 
-    def get_site(self, index) -> Atoms:
+    def get_site(self, index: Union[int, float]) -> Atoms:
         """
         Returns the Atoms object for a specific site.
 

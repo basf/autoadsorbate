@@ -370,7 +370,7 @@ class Surface:
         site_index (str or int): The index of the site to be populated. Default is 'all'.
         sample_rotation (bool): Whether to sample different rotations of the fragment. Default is True.
         mode (str): The mode of operation. Can be 'heuristic' or 'all'. Default is 'heuristic'.
-        conformers_per_site_cap (int or None): The maximum number of conformers per site. Default is None.
+        conformers_per_site_cap (int or None): The maximum number of conformers per site. Default None mean the maximum number of conformers.
         overlap_thr (float): The overlap threshold. Default is 1.5.
         verbose (bool): Whether to print detailed information during execution. Default is False.
 
@@ -435,6 +435,8 @@ class Surface:
                     self.atoms, site, conformer, mode="optimize", overlap_thr=0
                 )  # the zero is intentional
 
+            if conformers_per_site_cap == None:
+                conformers_per_site_cap = len(conformers)
             if conformers_per_site_cap != None:
                 c_trj = [atoms for atoms in c_trj if atoms.info["mdf"] > overlap_thr]
 

@@ -641,7 +641,7 @@ def _filter_unique_sites_by_soap(
     site_df: pd.DataFrame,
     cutoff: float = 5.0,
     soap_params: dict = None,
-    similarity_threshold: float = 0.98
+    similarity_threshold: float = 0.999
 ) -> pd.DataFrame:
     
     """

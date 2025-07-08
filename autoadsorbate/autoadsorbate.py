@@ -299,7 +299,7 @@ class Surface:
         else:
             view(view_atoms)
 
-    def compare_sites(self, site_index1: int, site_index2: int) -> bool:
+    def compare_sites(self, site_index1: int, site_index2: int, **kwargs) -> bool:
         """
         Compares two sites for symmetry equivalence.
 
@@ -312,7 +312,7 @@ class Surface:
         """
         from ase.utils.structure_comparator import SymmetryEquivalenceCheck
 
-        SEC = SymmetryEquivalenceCheck()
+        SEC = SymmetryEquivalenceCheck(**kwargs)
         site1 = self.get_site(site_index1)
         site2 = self.get_site(site_index2)
 
@@ -322,7 +322,7 @@ class Surface:
 
         return SEC.compare(self.atoms + site1, self.atoms + site2)
 
-    def get_nonequivalent_sites(self) -> List[int]:
+    def get_nonequivalent_sites(self, **kwargs) -> List[int]:
         """
         Returns a list of indices for nonequivalent sites.
 
@@ -335,7 +335,7 @@ class Surface:
 
         for i in i_s:
             if not matches[i]:
-                m = [self.compare_sites(i, j) for j in i_s]
+                m = [self.compare_sites(i, j, **kwargs) for j in i_s]
                 matches += m
                 matches = matches > 0
                 original.append(i)
@@ -343,11 +343,11 @@ class Surface:
                 break
         return original
 
-    def sym_reduce(self):
+    def sym_reduce(self, **kwargs):
         """
         Reduces the site DataFrame to nonequivalent sites.
         """
-        include = self.get_nonequivalent_sites()
+        include = self.get_nonequivalent_sites(**kwargs)
         include_filter = [i in include for i in self.site_df.index.values]
         self.site_df = self.site_df[include_filter]
         self.site_dict = self.site_df.to_dict(orient="list")

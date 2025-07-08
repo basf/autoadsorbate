@@ -636,6 +636,68 @@ def get_max_atoms_dict(traj):
         max_atoms_dict[k] = max(v)
     return max_atoms_dict
 
+def _filter_unique_sites_by_soap(
+    slab: Atoms,
+    site_df: pd.DataFrame,
+    cutoff: float = 5.0,
+    soap_params: dict = None,
+    similarity_threshold: float = 0.98
+) -> pd.DataFrame:
+    
+    """
+    special helper function for handling edge cases where ase symmetry checker gives unsatisfactory results.
+    requires additional dependecies: sklearn and dscribe.
+    """
+    from dscribe.descriptors import SOAP 
+    from sklearn.metrics.pairwise import cosine_similarity
+
+    if soap_params is None:
+        soap_params = {
+            "r_cut": cutoff,
+            "n_max": 8,
+            "l_max": 6,
+            "sigma": 0.1,
+            "average": "off",
+        }
+    soap = SOAP(
+        species=slab.get_chemical_symbols(),
+        periodic=True,
+        **soap_params
+    )
+
+    # Compute SOAP for all atoms in slab
+    all_soap_vectors = soap.create(slab)  # shape (num_atoms, soap_vector_length)
+
+    coords = np.array(site_df['coordinates'].tolist())
+    atom_positions = slab.get_positions()
+
+    # Find closest atom index for each site coordinate
+    indices = []
+    for c in coords:
+        dists = np.linalg.norm(atom_positions - c, axis=1)
+        closest_index = np.argmin(dists)
+        indices.append(closest_index)
+
+    # Extract SOAP vectors for closest atoms
+    soap_vectors = all_soap_vectors[indices]
+
+    # Compute similarity and cluster
+    similarity_matrix = cosine_similarity(soap_vectors)
+    n_sites = len(site_df)
+    seen = np.zeros(n_sites, dtype=bool)
+    unique_indices = []
+
+    for i in range(n_sites):
+        if seen[i]:
+            continue
+        unique_indices.append(i)
+        similar_sites = np.where(similarity_matrix[i] >= similarity_threshold)[0]
+        for j in similar_sites:
+            seen[j] = True
+
+    return site_df.iloc[unique_indices] #.reset_index(drop=True)
+
+
 
 # def conformer_to_site(atoms, site, conformer, mode='optimize', overlap_thr = 0):
 #

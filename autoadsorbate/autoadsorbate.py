@@ -210,26 +210,61 @@ class Surface:
             self.site_df = self.site_df.sort_values(by="sort", ignore_index=True)
             self.site_df.pop("sort")
 
-    def get_site(self, index: int) -> Atoms:
+    # def get_site(self, index: int) -> Atoms:
+        # """
+        # Returns the atoms object for a specific site.
+
+        # Args:
+        #     index (int): The index of the site.
+
+        # Returns:
+        #     Atoms: The ASE Atoms object for the site.
+        # """
+        # site_atoms = self.atoms.copy()
+
+        # if "adsorbate_info" in site_atoms.info.keys():
+        #     site_atoms.info.pop("adsorbate_info")
+
+        # info = self.site_df.loc[index].to_dict()
+        # site_atoms.info.update(info)
+        # site_atoms.append(Atom("X", position=self.site_df["coordinates"].loc[index]))
+        # del site_atoms[:-1]
+        # return site_atoms
+
+    def get_site(self, index) -> Atoms:
         """
-        Returns the atoms object for a specific site.
+        Returns the Atoms object for a specific site.
 
         Args:
-            index (int): The index of the site.
+            index (int or float): If int, used directly as index label in site_df.
+                                If float in [0, 1], used as fractional position in site_df.
 
         Returns:
             Atoms: The ASE Atoms object for the site.
         """
         site_atoms = self.atoms.copy()
+        site_atoms.info.pop("adsorbate_info", None)
 
-        if "adsorbate_info" in site_atoms.info.keys():
-            site_atoms.info.pop("adsorbate_info")
+        # Resolve index
+        if isinstance(index, float):
+            if not (0.0 <= index <= 1.0):
+                raise ValueError("Float index must be between 0 and 1.")
+            position = int(index * len(self.site_df))
+            position = min(position, len(self.site_df) - 1)  # clamp to valid range
+            index = self.site_df.index[position]
+        elif index not in self.site_df.index:
+            raise KeyError(f"Index {index} not found in site_df index.")
 
+        # Extract and assign site info
         info = self.site_df.loc[index].to_dict()
+        coordinates = self.site_df.loc[index, "coordinates"]
+
         site_atoms.info.update(info)
-        site_atoms.append(Atom("X", position=self.site_df["coordinates"].loc[index]))
+        site_atoms.append(Atom("X", position=coordinates))
         del site_atoms[:-1]
+
         return site_atoms
+
 
     def view_site(self, index: int, return_atoms: bool = False) -> Atoms:
         """

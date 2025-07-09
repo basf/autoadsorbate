@@ -395,23 +395,28 @@ def make_site_info_writable(site):
     return site
 
 
-def docs_plot_conformers(conformer_trajectory, rotation="-90x,0y,0z"):
+def docs_plot_conformers(conformer_trajectory, rotation="-90x,0y,0z", nb_column=5):
     """
     Helper function to plot a series of conformers.
 
     Parameters:
     conformer_trajectory (list): A list of atomic structures representing the conformers.
     rotation (str): The rotation to apply to the plot. Default is '-90x,0y,0z'.
+    nb_column (int): Control the number of column of the plot. The number of row is the number of conformers divided by number of column, rouded to superior.
 
     Returns:
     matplotlib.figure.Figure: The figure object containing the plots.
     """
-    fig, ax = plt.subplots(1, 5, figsize=(10, 2), sharex=True, sharey=True)
+    nb_row = int(np.ceil(len(conformer_trajectory)/nb_column))
+    fig, ax = plt.subplots(nb_row, nb_column, figsize=(2*nb_row, 2*nb_column), sharex=True, sharey=True)
 
-    for i, atoms in enumerate(ax):
-        plot_atoms(conformer_trajectory[i], ax=ax[i], rotation=rotation)
-        ax[i].set_xlim(0, 7), ax[i].set_ylim(0, 7)
-        ax[i].set_axis_off()
+
+    for i in range(len(ax)):
+        for j in range(len(ax[i])):
+            plot_atoms(conformer_trajectory[i], ax=ax[i, j], rotation=rotation)
+            ax[i, j].set_xlim(0, 7), ax[i, j].set_ylim(0, 7)
+            ax[i, j].set_axis_off()
+
     fig.suptitle("Generated structures viewed from +X axis", fontsize=12)
     fig.tight_layout()
     return fig

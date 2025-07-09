@@ -100,11 +100,6 @@ class Fragment:
         Returns:
             Atoms: A copy of the aligned and rotated conformer.
         """
-        if not self.conformers_aligned[i]:
-            self.conformers[i] = _reset_position(self.conformers[i])
-            self.conformers[i] = _reset_rotation(self.conformers[i])
-            self.conformers_aligned[i] = True
-
         # Resolve index
         if isinstance(i, float):
             if not (0.0 <= i <= 1.0):
@@ -114,6 +109,12 @@ class Fragment:
             i = position
         elif i > self.to_initialize:
             raise KeyError(f"Index {i} is larger than nnumber of initialized conformers.")
+
+
+        if not self.conformers_aligned[i]:
+            self.conformers[i] = _reset_position(self.conformers[i])
+            self.conformers[i] = _reset_rotation(self.conformers[i])
+            self.conformers_aligned[i] = True
 
         self.conformers[i].rotate(rot_deg, n_vector)
         self.conformers[i].info["smiles"] = self.smile

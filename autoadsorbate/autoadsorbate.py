@@ -361,6 +361,7 @@ class Surface:
         conformers_per_site_cap=None,
         overlap_thr=1.5,
         verbose=False,
+        parallel=None,
     ):
         """
         Populates the specified sites with the given fragment, optimizing the orientation to minimize overlap.
@@ -373,6 +374,7 @@ class Surface:
         conformers_per_site_cap (int or None): The maximum number of conformers per site. Default None mean the maximum number of conformers.
         overlap_thr (float): The overlap threshold. Default is 1.5.
         verbose (bool): Whether to print detailed information during execution. Default is False.
+        parallel (int): If value >0, parallelize the configuration on the number of CPU specified. Default None
 
         Returns:
         list: A list containing the optimized atoms objects for each site.
@@ -428,12 +430,22 @@ class Surface:
             print("conformers", len(conformers))
             print("sites", len(sites))
 
+        if parallel != None:
+            from joblib import Parallel, delayed
+
         for site in sites:
             c_trj = []
-            for conformer in conformers:
-                c_trj += conformer_to_site(
-                    self.atoms, site, conformer, mode="optimize", overlap_thr=0
-                )  # the zero is intentional
+
+            if parallel != None:
+
+                c_trj.extend(Parallel(n_jobs=parallel)(delayed(conformer_to_site)(self.atoms, site, conformer, mode="optimize", overlap_thr=0) for conformer in conformers))
+                c_trj = [x[0] for x in c_trj]
+
+            else:
+                for conformer in conformers:
+                    c_trj += conformer_to_site(
+                        self.atoms, site, conformer, mode="optimize", overlap_thr=0
+                    )  # the zero is intentional
 
             if conformers_per_site_cap == None:
                 conformers_per_site_cap = len(conformers)

@@ -402,6 +402,7 @@ def docs_plot_conformers(conformer_trajectory, rotation="-90x,0y,0z", nb_column=
     Parameters:
     conformer_trajectory (list): A list of atomic structures representing the conformers.
     rotation (str): The rotation to apply to the plot. Default is '-90x,0y,0z'.
+    nb_column (int): Control the number of column of the plot. The number of row is the number of conformers divided by number of column, rouded to superior.
 
     Returns:
     matplotlib.figure.Figure: The figure object containing the plots.
@@ -412,7 +413,7 @@ def docs_plot_conformers(conformer_trajectory, rotation="-90x,0y,0z", nb_column=
 
     for i in range(len(ax)):
         for j in range(len(ax[i])):
-            plot_atoms(conformer_trajectory[i], ax=ax[i, j], rotation="-90x,0y,0z")
+            plot_atoms(conformer_trajectory[i], ax=ax[i, j], rotation=rotation)
             ax[i, j].set_xlim(0, 7), ax[i, j].set_ylim(0, 7)
             ax[i, j].set_axis_off()
 

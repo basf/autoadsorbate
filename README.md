@@ -9,7 +9,6 @@
 - [Making surrogate SMILES automatically](#making-surrogate-smiles-automatically)
 - [Fully automatic - populate Surface with Fragment](#fully-automatic---populate-surface-with-fragment)
 
-
 ## Installation
 
 The package is designed to be as lightweight as possible, to implement seamlessly into existing environments with complex dependecies. If you `git clone <autoadsorbate>` and just `sys.path.insert(0, <path/to/autoadsorbate>)`, most likely it will work.
@@ -69,12 +68,11 @@ Molecules and reactive species are both initialized as the Fragment object (base
 
 Before to follow this guide, you need to load the following packages:
 ```python
-import matplotlib.pyplot as plt 
-from autoadsorbate import Fragment, Surface, docs_plot_conformers, get_marked_smiles, get_drop_snapped, docs_plot_sites, _example_config,  construct_smiles
+import matplotlib.pyplot as plt
+from autoadsorbate import Fragment, Surface, docs_plot_conformers, docs_plot_sites, get_marked_smiles, get_drop_snapped, _example_config, construct_smiles
 from ase.visualize.plot import plot_atoms
 from ase import Atoms
 ```
-
 
 Let us initialize a molecule of dimethyl ether (DME):
 
@@ -84,10 +82,9 @@ from autoadsorbate import Fragment
 f = Fragment(smile = 'COC', to_initialize = 5)
 ```
 
-
 ```python
 import matplotlib.pyplot as plt
-from autoadsorbate import docs_plot_conformers
+from autoadsorbate.viz import docs_plot_conformers
 
 conformer_trajectory = f.conformers
 fig = docs_plot_conformers(conformer_trajectory)
@@ -103,15 +100,13 @@ Notice that the orientation of the fragment is arbitrary. While we could simply 
 
 However, in the case of DME, we can leverage chemical intuition to simplify the problem. The oxygen atom bridging the two methyl groups has two lone electron pairs. By using a simple trick—replacing one of these lone pairs with a marker atom (such as chlorine, Cl)—we can guide the placement more effectively.
 
-
 Notice that we had to make two adjustments to the SMILES string. To replace the lone pair with a marker atom, we must "trick" the valence of the oxygen atom and rearrange the SMILES formula so that the marker atom appears first (for easier bookkeeping).
-    - ```COC``` original
-    - ```CO(Cl)C``` add Cl instead of the O lone pair (this is an invalid SMILES)
-    - ```C[O+](Cl)C``` trick to make the valence work
-    - ```Cl[O+](C)C``` rearrange so that the SMILES string starts with the marker first (for easy book keeping)
+- ```COC``` original
+- ```CO(Cl)C``` add Cl instead of the O lone pair (this is an invalid SMILES)
+- ```C[O+](Cl)C``` trick to make the valence work
+- ```Cl[O+](C)C``` rearrange so that the SMILES string starts with the marker first (for easy book keeping)
 
 This can be also done with a function:
-
 
 ```python
 from autoadsorbate import get_marked_smiles
@@ -131,6 +126,7 @@ len(f.conformers)
 We can visualize these structures:
 ```python
 conformer_trajectory = f.conformers
+from autoadsorbate.viz import docs_plot_conformers
 fig = docs_plot_conformers(conformer_trajectory)
 plt.show()
 ```
@@ -143,9 +139,8 @@ plt.show()
 
 Now we can use the marker atom to orient our molecule:
 
-
 ```python
-from autoadsorbate import docs_plot_sites
+from autoadsorbate.viz import docs_plot_sites, docs_plot_conformers
 
 oriented_conformer_trajectory = [f.get_conformer(i) for i, _ in enumerate(f.conformers)]
 fig = docs_plot_conformers(oriented_conformer_trajectory)
@@ -160,9 +155,9 @@ plt.show()
 
 We can also easily remove the marker:
 
-
 ```python
 clean_conformer_trajectory = [atoms[1:] for atoms in oriented_conformer_trajectory]
+from autoadsorbate.viz import docs_plot_conformers
 fig = docs_plot_conformers(clean_conformer_trajectory)
 plt.show()
 ```
@@ -177,10 +172,10 @@ plt.show()
 
 Methoxy
 
-
 ```python
 f = Fragment(smile = 'ClOC', to_initialize = 5)
 oriented_conformer_trajectory = [f.get_conformer(i) for i, _ in enumerate(f.conformers)]
+from autoadsorbate.viz import docs_plot_conformers
 fig = docs_plot_conformers(oriented_conformer_trajectory)
 plt.show()
 ```
@@ -193,10 +188,10 @@ plt.show()
 
 ##### Methyl
 
-
 ```python
 f = Fragment(smile = 'ClC', to_initialize = 5)
 oriented_conformer_trajectory = [f.get_conformer(i) for i, _ in enumerate(f.conformers)]
+from autoadsorbate.viz import docs_plot_conformers
 fig = docs_plot_conformers(oriented_conformer_trajectory)
 plt.show()
 ```
@@ -211,10 +206,10 @@ plt.show()
 
 bound through single site:
 
-
 ```python
 f = Fragment(smile = 'Cl[OH+]CC(O)C', to_initialize = 5)
 oriented_conformer_trajectory = [f.get_conformer(i) for i, _ in enumerate(f.conformers)]
+from autoadsorbate.viz import docs_plot_conformers
 fig = docs_plot_conformers(oriented_conformer_trajectory)
 plt.show()
 ```
@@ -231,6 +226,7 @@ Coordinated withboth hydroxil:
 ```python
 f = Fragment(smile = 'S1S[OH+]CC([OH+]1)C', to_initialize = 5)
 oriented_conformer_trajectory = [f.get_conformer(i) for i, _ in enumerate(f.conformers)]
+from autoadsorbate.viz import docs_plot_conformers
 fig = docs_plot_conformers(oriented_conformer_trajectory)
 plt.show()
 ```
@@ -256,9 +252,11 @@ slab = fcc111('Cu', (4,4,4), periodic=True, vacuum=10)
 Now we can initalize the Surface object which associates the constructed slab (ase.Atoms) with additional information required for placing Fragments.
 We can view which atoms are in the surface:
 
-
 ```python
+from autoadsorbate import Surface
+from ase.visualize.plot import plot_atoms
 s = Surface(slab)
+# s.view_surface is a placeholder for your actual surface viewing method
 plot_atoms(s.view_surface(return_atoms=True))
 ```
 
@@ -271,91 +269,11 @@ plot_atoms(s.view_surface(return_atoms=True))
 
 We have access to all the sites info as a pandas dataframe:
 
-
 ```python
-s.site_df.head()
+s.site_dataframe.head()
 ```
 
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>coordinates</th>
-      <th>connectivity</th>
-      <th>topology</th>
-      <th>n_vector</th>
-      <th>h_vector</th>
-      <th>site_formula</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>[0.0, 0.0, 16.252703415323644]</td>
-      <td>1</td>
-      <td>[48]</td>
-      <td>[-0.004670396521231514, -0.0031449903964026822...</td>
-      <td>[1.0, 0.0, 0.0]</td>
-      <td>{'Cu': 1}</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>[0.6381638700208592, 1.105332246430909, 16.252...</td>
-      <td>2</td>
-      <td>[48, 52]</td>
-      <td>[0.0006776311857337964, -0.010516809475472271,...</td>
-      <td>[-0.5000000000000001, -0.8660254037844387, 0.0]</td>
-      <td>{'Cu': 2}</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>[1.2763277400417168, 5.162938145598479e-16, 16...</td>
-      <td>2</td>
-      <td>[48, 49]</td>
-      <td>[-0.011576660085263627, -0.017987208564805915,...</td>
-      <td>[-1.0, 0.0, 0.0]</td>
-      <td>{'Cu': 2}</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>[1.2763277400417183, 0.7368881642872727, 16.25...</td>
-      <td>3</td>
-      <td>[48, 49, 52]</td>
-      <td>[-0.01272989568588465, 0.0042077202541598024, ...</td>
-      <td>[-0.5000000000000001, -0.8660254037844387, 0.0]</td>
-      <td>{'Cu': 3}</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>[1.2763277400417183, 2.210664492861818, 16.252...</td>
-      <td>1</td>
-      <td>[52]</td>
-      <td>[0.0013334161774154326, -0.007734740595549886,...</td>
-      <td>[1.0, 0.0, 0.0]</td>
-      <td>{'Cu': 1}</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
-
 or in dict form:
-
 
 ```python
 s.site_dict.keys()
@@ -390,7 +308,7 @@ site_atoms.info
 We can visualize a few surface sites:
 
 ```python
-from autoadsorbate import docs_plot_sites
+from autoadsorbate.viz import docs_plot_sites
 fig = docs_plot_sites(s)
 plt.show()
 ```
@@ -534,7 +452,6 @@ smiles = construct_smiles(config)
 ```
 We now have a list of surrgate SMILES that can be used to initalize Fragment objects.
 
-
 ```python
 smiles
 ```
@@ -609,32 +526,21 @@ for s in smiles:
         trj.append(a)
     except:
         pass
- 
 lst = [z for z in zip([a.get_chemical_formula() for a in trj],trj)]
 lst.sort(key=lambda tup: tup[0])
 trj =  [a[1] for a in lst]
 len(trj)
 ```
 
-
-
-
-    52
-
 From the list of initialized conformers we can remove the ones that are effectively identical:
-
 
 ```python
 from autoadsorbate import get_drop_snapped 
- 
 xtrj = get_drop_snapped(trj, d_cut=1.5)
 len(xtrj)
 ```
 
-    33
-
 We can visualize these structures:
-
 
 ```python
 import matplotlib.pyplot as plt
@@ -646,10 +552,8 @@ fig, axs = plt.subplots(3,11, figsize=[10,5], dpi=100)
 for i, ax in enumerate(axs.flatten()):
     try:
         platoms = xtrj[i].copy()
-         
     except:
         platoms = Atoms('X', positions = [[0,0,0]])
- 
     for atom in platoms:
         if atom.symbol in ['Cl', 'S']:
             atom.symbol = 'Ga'
@@ -657,16 +561,9 @@ for i, ax in enumerate(axs.flatten()):
     ax.set_axis_off()
     ax.set_xlim(-1, 5)
     ax.set_ylim(-0.5, 5.5)
- 
 fig.set_layout_engine(layout='tight')
 plt.show()
 ```
-
-
-    
-![png](README_files/README_52_0.png)
-    
-
 
 ## Fully automatic - populate Surface with Fragment
 

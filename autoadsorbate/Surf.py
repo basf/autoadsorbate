@@ -281,7 +281,7 @@ def _special_scale(atoms: Atoms) -> Atoms:
 def get_shrinkwrap_grid(
     slab: Atoms,
     precision: float,
-    drop_increment: float = 0.1,
+    drop_increment: float = 0.02,
     touch_sphere_size: float = 3,
     marker: str = "He",
     raster_speed_boost: bool = False,

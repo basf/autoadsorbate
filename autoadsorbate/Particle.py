@@ -329,8 +329,8 @@ def get_shrinkwrap_particle_ads_sites(
         center = center,
         point_cloud = particle_atoms.positions,
         touch_criteria=touch_sphere_size,
-        step_size=0.05,
-        max_steps=1000
+        step_size=0.01,
+        max_steps=5000
         )
     
     

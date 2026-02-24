@@ -401,8 +401,34 @@ plt.show()
     
 
 
-We can reduce the complete list of sites based on symmetry (```ase.utils.structure_comparator.SymmetryEquivalenceCheck```):
+We can reduce the complete list of sites based on symmetry. Two methods are available:
 
+1. **ASE crystallographic symmetry** (default) – uses `ase.utils.structure_comparator.SymmetryEquivalenceCheck`:
+
+```python
+s.sym_reduce()                          # equivalent to s.sym_reduce(method='ase')
+s.site_df
+```
+
+2. **SOAP descriptor similarity** – uses SOAP descriptors ([DScribe](https://singroup.github.io/dscribe/)) and hierarchical clustering, robust for disordered / low-symmetry surfaces:
+
+```python
+# Requires: pip install dscribe scikit-learn scipy
+s.sym_reduce(method='soap')             # default similarity_threshold=0.99
+s.site_df
+```
+
+The SOAP method can be further tuned:
+```python
+s.sym_reduce(
+    method='soap',
+    similarity_threshold=0.95,           # lower = more aggressive merging
+    soap_params={'r_cut': 6.0, 'n_max': 8, 'l_max': 6, 'sigma': 0.1},
+    soap_cluster_method='hcluster',      # or 'greedy'
+)
+```
+
+Using the default (ASE) method:
 
 ```python
 s.sym_reduce()
@@ -495,6 +521,89 @@ plot_atoms(s.view_surface(return_atoms=True))
 ![png](README_files/README_45_2.png)
     
 
+
+## Benchmark: ASE vs SOAP symmetry reduction
+
+The two symmetry-reduction methods differ fundamentally in how they define "equivalent":
+
+| Aspect | ASE (`SymmetryEquivalenceCheck`) | SOAP (dscribe + hierarchical clustering) |
+|---|---|---|
+| **Equivalence criterion** | Strict crystallographic space-group symmetry | Cosine similarity of local SOAP descriptors |
+| **Adjustable threshold** | No — binary match/no-match | Yes — continuous `similarity_threshold` |
+| **Scaling** | O(n²) pairwise structure comparisons | O(n) SOAP evaluations + O(n²) similarity matrix |
+| **Robustness to disorder** | Breaks down when symmetry is broken | Groups by local chemical environment |
+
+### Ni(111) 3×3 slab with 1 Ni → Ru substitution
+
+To illustrate the difference, we replace one surface Ni with Ru on a Ni(111) 3×3 slab (54 candidate adsorption sites) and compare both methods:
+
+```python
+import copy, time
+from ase.build import fcc111
+from autoadsorbate import Surface
+
+slab = fcc111("Ni", (3, 3, 3), periodic=True, vacuum=10)
+top_z = slab.positions[:, 2].max()
+for atom in slab:
+    if abs(atom.position[2] - top_z) < 0.1:
+        atom.symbol = "Ru"
+        break
+
+s = Surface(slab)
+s_ase = copy.deepcopy(s)
+s_soap = copy.deepcopy(s)
+
+s_ase.sym_reduce(method="ase")
+s_soap.sym_reduce(method="soap", similarity_threshold=0.99)
+```
+
+#### Timing results
+
+| Method | Unique sites | Time | Speedup |
+|---|---:|---:|---:|
+| ASE `SymmetryEquivalenceCheck` | 16 | 8.4 s | 1× |
+| SOAP + hierarchical clustering | 8 | 0.016 s | **~525×** |
+
+#### Detailed breakdown by site type
+
+| SOAP Cluster | Site type | Formula | Total sites | ASE reps | SOAP rep | Interpretation |
+|---|---|---|---:|---:|---:|---|
+| 8 | atop | {Ru: 1} | 1 | 1 | 1 | Unique Ru atop — both agree |
+| 1 | atop | {Ni: 1} | 8 | 3 | 1 | ASE splits by distance-to-Ru; SOAP merges (all Ni atop) |
+| 2 | bridge | {Ru:1, Ni:1} | 6 | 1 | 1 | Ru-Ni bridges — both agree |
+| 3 | bridge | {Ni: 2} | 21 | 5 | 1 | ASE splits into 5; SOAP merges all Ni-Ni bridges |
+| 4 | hollow | {Ru:1, Ni:2} | 3 | 1 | 1 | Near-Ru hollows — both agree |
+| 6 | hollow | {Ru:1, Ni:2} | 3 | 1 | 1 | Far-Ru hollows — both agree |
+| 5 | hollow | {Ni: 3} | 6 | 2 | 1 | ASE splits into 2; SOAP merges |
+| 7 | hollow | {Ni: 3} | 6 | 2 | 1 | ASE splits into 2; SOAP merges |
+
+The SOAP method captures the **physically meaningful site diversity** (8 distinct local environments) while the ASE method finds 16 sites that differ only by their distance from the Ru dopant within an otherwise identical coordination shell.
+
+#### Site map
+
+![Site comparison](README_files/site_comparison.png)
+
+*Left: 16 ASE representatives. Right: 8 SOAP representatives. Coloured by SOAP cluster; marker shape = site type (○ atop, □ bridge, △ hollow). Grey dots = all 54 candidate sites.*
+
+#### SOAP distance histogram
+
+```python
+sim = s.get_soap_similarity_matrix()
+dist = 1.0 - sim
+upper = dist[np.triu_indices_from(dist, k=1)]
+
+fig, ax = plt.subplots(figsize=(7, 3.5))
+ax.hist(upper, bins=60, edgecolor="black", linewidth=0.4, color="#4C72B0")
+ax.axvline(0.01, color="red", ls="--", lw=1.5,
+           label="threshold = 0.01\n(similarity = 0.99)")
+ax.set_xlabel("SOAP distance  (1 − cosine similarity)")
+ax.set_ylabel("Number of site pairs")
+ax.legend(fontsize=9)
+```
+
+![SOAP distance histogram](README_files/soap_histogram.png)
+
+The histogram shows a clear separation between intra-cluster pairs (distance ≈ 0) and inter-cluster pairs, confirming that the 0.99 similarity threshold sits in the natural gap between equivalent and non-equivalent site pairs.
 
 ## Making surogate SMILES automatically
 
@@ -678,7 +787,8 @@ from autoadsorbate import Surface, Fragment
 
 slab = fcc211(symbol = 'Cu', size=(6,3,3), vacuum=10)  # any ase.Atoms object
 s=Surface(slab, touch_sphere_size=2.7)                 # finding all surface atoms
-s.sym_reduce()                                         # keeping only non-identical sites
+s.sym_reduce()                                         # keeping only non-identical sites (default: method='ase')
+# s.sym_reduce(method='soap')                          # alternative: SOAP-descriptor based reduction
 
 fragments = [
     Fragment('S1S[OH+]CC(N)[OH+]1', to_initialize=20), # For each *SMILES we can request a differnet number of conformers 

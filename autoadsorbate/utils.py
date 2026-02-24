@@ -661,66 +661,158 @@ def get_max_atoms_dict(traj):
         max_atoms_dict[k] = max(v)
     return max_atoms_dict
 
+def _compute_soap_site_vectors(
+    slab: Atoms,
+    site_df: pd.DataFrame,
+    soap_params: dict = None,
+    probe_element: str = "X",
+) -> np.ndarray:
+    """Compute SOAP descriptor vectors centred at each adsorption site.
+
+    A ghost probe atom is temporarily placed at each site position and SOAP
+    descriptors are evaluated for that position within the periodic slab
+    environment.
+
+    Args:
+        slab: The surface slab (ASE Atoms, with cell and PBC).
+        site_df: DataFrame with a ``coordinates`` column (list of 3-vectors).
+        soap_params: Optional dict forwarded to ``dscribe.descriptors.SOAP``.
+            Defaults to ``{r_cut: 5.0, n_max: 8, l_max: 6, sigma: 0.1}``.
+        probe_element: Element symbol used for the probe atom.  Must **not**
+            already be present in *slab*.  Defaults to ``"X"``.
+
+    Returns:
+        np.ndarray: SOAP feature matrix of shape ``(n_sites, n_features)``.
+
+    Requires:
+        ``dscribe`` (pip install dscribe).
+    """
+    from dscribe.descriptors import SOAP
+
+    if soap_params is None:
+        soap_params = {
+            "r_cut": 5.0,
+            "n_max": 8,
+            "l_max": 6,
+            "sigma": 0.1,
+        }
+
+    species = sorted(set(slab.get_chemical_symbols()) | {probe_element})
+
+    soap = SOAP(
+        species=species,
+        periodic=True,
+        **soap_params,
+    )
+
+    coords = np.array(site_df["coordinates"].tolist())
+    n_slab = len(slab)
+    soap_vectors = []
+
+    for coord in coords:
+        probe = slab.copy()
+        probe.append(Atom(probe_element, position=coord))
+        # Compute SOAP only for the probe atom (last one)
+        desc = soap.create(probe, centers=[n_slab])
+        soap_vectors.append(desc.flatten())
+
+    return np.array(soap_vectors)
+
+
+def _soap_similarity_matrix(
+    soap_vectors: np.ndarray,
+) -> np.ndarray:
+    """Pairwise cosine-similarity matrix from SOAP feature vectors.
+
+    Args:
+        soap_vectors: Feature matrix of shape ``(n, d)``.
+
+    Returns:
+        np.ndarray: Symmetric similarity matrix of shape ``(n, n)`` with
+        values in ``[-1, 1]``.
+    """
+    from sklearn.metrics.pairwise import cosine_similarity
+
+    return cosine_similarity(soap_vectors)
+
+
 def _filter_unique_sites_by_soap(
     slab: Atoms,
     site_df: pd.DataFrame,
     cutoff: float = 5.0,
     soap_params: dict = None,
-    similarity_threshold: float = 0.999
+    similarity_threshold: float = 0.99,
+    method: str = "hcluster",
 ) -> pd.DataFrame:
-    
-    """
-    special helper function for handling edge cases where ase symmetry checker gives unsatisfactory results.
-    requires additional dependecies: sklearn and dscribe.
-    """
-    from dscribe.descriptors import SOAP 
-    from sklearn.metrics.pairwise import cosine_similarity
+    """Filter *site_df* to keep only symmetry-non-equivalent sites using
+    SOAP descriptors and (optionally) hierarchical clustering.
 
+    This is a helper for cases where ASE's ``SymmetryEquivalenceCheck``
+    gives unsatisfactory results.  Requires ``dscribe`` and ``sklearn``.
+
+    Args:
+        slab: The surface slab.
+        site_df: DataFrame produced by ``Surface`` (must contain a
+            ``coordinates`` column).
+        cutoff: SOAP radial cutoff (used only when *soap_params* is ``None``).
+        soap_params: Full dict of SOAP hyper-parameters forwarded to
+            ``_compute_soap_site_vectors``.
+        similarity_threshold: Cosine-similarity above which two sites are
+            considered equivalent.  For *method="hcluster"* this is converted
+            to a distance threshold ``1 - similarity_threshold``.
+        method: ``"hcluster"`` (default)  — agglomerative hierarchical
+            clustering via ``scipy.cluster.hierarchy``; ``"greedy"`` — simple
+            greedy merging (legacy behaviour).
+
+    Returns:
+        pd.DataFrame: Subset of *site_df* with one representative per cluster.
+    """
     if soap_params is None:
         soap_params = {
             "r_cut": cutoff,
             "n_max": 8,
             "l_max": 6,
             "sigma": 0.1,
-            "average": "off",
         }
-    soap = SOAP(
-        species=slab.get_chemical_symbols(),
-        periodic=True,
-        **soap_params
-    )
 
-    # Compute SOAP for all atoms in slab
-    all_soap_vectors = soap.create(slab)  # shape (num_atoms, soap_vector_length)
+    soap_vectors = _compute_soap_site_vectors(slab, site_df, soap_params=soap_params)
+    similarity_matrix = _soap_similarity_matrix(soap_vectors)
 
-    coords = np.array(site_df['coordinates'].tolist())
-    atom_positions = slab.get_positions()
+    if method == "hcluster":
+        from scipy.cluster.hierarchy import fcluster, linkage
+        from scipy.spatial.distance import squareform
 
-    # Find closest atom index for each site coordinate
-    indices = []
-    for c in coords:
-        dists = np.linalg.norm(atom_positions - c, axis=1)
-        closest_index = np.argmin(dists)
-        indices.append(closest_index)
+        # Convert similarity → distance, clip for numerical safety
+        dist_matrix = np.clip(1.0 - similarity_matrix, 0.0, 2.0)
+        np.fill_diagonal(dist_matrix, 0.0)
+        condensed = squareform(dist_matrix, checks=False)
+        Z = linkage(condensed, method="average")
+        labels = fcluster(Z, t=1.0 - similarity_threshold, criterion="distance")
 
-    # Extract SOAP vectors for closest atoms
-    soap_vectors = all_soap_vectors[indices]
+        # Pick the first site in each cluster as the representative
+        unique_indices = []
+        seen_labels = set()
+        for idx, lab in enumerate(labels):
+            if lab not in seen_labels:
+                seen_labels.add(lab)
+                unique_indices.append(idx)
 
-    # Compute similarity and cluster
-    similarity_matrix = cosine_similarity(soap_vectors)
-    n_sites = len(site_df)
-    seen = np.zeros(n_sites, dtype=bool)
-    unique_indices = []
+    elif method == "greedy":
+        n_sites = len(site_df)
+        seen = np.zeros(n_sites, dtype=bool)
+        unique_indices = []
+        for i in range(n_sites):
+            if seen[i]:
+                continue
+            unique_indices.append(i)
+            similar_sites = np.where(similarity_matrix[i] >= similarity_threshold)[0]
+            for j in similar_sites:
+                seen[j] = True
 
-    for i in range(n_sites):
-        if seen[i]:
-            continue
-        unique_indices.append(i)
-        similar_sites = np.where(similarity_matrix[i] >= similarity_threshold)[0]
-        for j in similar_sites:
-            seen[j] = True
+    else:
+        raise ValueError(f"Unknown method '{method}'. Use 'hcluster' or 'greedy'.")
 
-    return site_df.iloc[unique_indices] #.reset_index(drop=True)
+    return site_df.iloc[unique_indices]
 
 
 

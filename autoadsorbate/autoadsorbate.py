@@ -18,6 +18,9 @@ from .Surf import conformer_to_site, get_shrinkwrap_ads_sites
 from .utils import (
     get_sorted_by_snap_dist,
     make_site_info_writable,
+    _compute_soap_site_vectors,
+    _soap_similarity_matrix,
+    _filter_unique_sites_by_soap,
 )
 
 from .Particle import get_shrinkwrap_particle_ads_sites
@@ -393,13 +396,53 @@ class Surface:
 
         return SEC.compare(self.atoms + site1, self.atoms + site2)
 
-    def get_nonequivalent_sites(self, **kwargs) -> List[int]:
-        """
-        Returns a list of indices for nonequivalent sites.
+    def get_nonequivalent_sites(
+        self,
+        method: str = "ase",
+        similarity_threshold: float = 0.99,
+        soap_params: dict = None,
+        soap_cluster_method: str = "hcluster",
+        **kwargs,
+    ) -> List[int]:
+        """Return a list of indices for nonequivalent sites.
+
+        Args:
+            method (str, optional): Algorithm used to determine equivalence.
+                ``"ase"`` (default) – ASE's crystallographic
+                ``SymmetryEquivalenceCheck`` (pairwise comparison, exact
+                space-group symmetry).  ``"soap"`` – SOAP descriptor
+                similarity with hierarchical clustering (robust for
+                disordered / low-symmetry surfaces).  Any extra
+                ``**kwargs`` are forwarded to
+                ``SymmetryEquivalenceCheck`` when *method="ase"*.
+            similarity_threshold (float, optional): Cosine-similarity
+                threshold (only used when *method="soap"*).  Defaults
+                to ``0.99``.
+            soap_params (dict, optional): SOAP hyper-parameters forwarded
+                to ``dscribe.descriptors.SOAP`` (only used when
+                *method="soap"*).
+            soap_cluster_method (str, optional): ``"hcluster"`` or
+                ``"greedy"`` (only used when *method="soap"*).
 
         Returns:
             List[int]: A list of indices for nonequivalent sites.
         """
+        if method == "ase":
+            return self._get_nonequivalent_sites_ase(**kwargs)
+        elif method == "soap":
+            return self.get_nonequivalent_sites_soap(
+                similarity_threshold=similarity_threshold,
+                soap_params=soap_params,
+                method=soap_cluster_method,
+            )
+        else:
+            raise ValueError(
+                f"Unknown method '{method}'. Choose 'ase' or 'soap'."
+            )
+
+    def _get_nonequivalent_sites_ase(self, **kwargs) -> List[int]:
+        """Return nonequivalent-site indices using ASE's
+        ``SymmetryEquivalenceCheck`` (legacy behaviour)."""
         original = []
         i_s = self.site_df.index.values
         matches = np.array([False for _ in i_s])
@@ -414,11 +457,142 @@ class Surface:
                 break
         return original
 
-    def sym_reduce(self, **kwargs):
+    def sym_reduce(
+        self,
+        method: str = "ase",
+        similarity_threshold: float = 0.99,
+        soap_params: dict = None,
+        soap_cluster_method: str = "hcluster",
+        **kwargs,
+    ):
+        """Reduce the site DataFrame to nonequivalent sites.
+
+        Args:
+            method (str, optional): ``"ase"`` (default) for
+                crystallographic symmetry, ``"soap"`` for SOAP-descriptor
+                based clustering.  See :meth:`get_nonequivalent_sites`
+                for full parameter descriptions.
+            similarity_threshold (float, optional): SOAP cosine-similarity
+                threshold (only when *method="soap"*).
+            soap_params (dict, optional): SOAP hyper-parameters (only when
+                *method="soap"*).
+            soap_cluster_method (str, optional): ``"hcluster"`` or
+                ``"greedy"`` (only when *method="soap"*).
+            **kwargs: Extra arguments forwarded to
+                ``SymmetryEquivalenceCheck`` when *method="ase"*.
         """
-        Reduces the site DataFrame to nonequivalent sites.
+        include = self.get_nonequivalent_sites(
+            method=method,
+            similarity_threshold=similarity_threshold,
+            soap_params=soap_params,
+            soap_cluster_method=soap_cluster_method,
+            **kwargs,
+        )
+        include_filter = [i in include for i in self.site_df.index.values]
+        self.site_df = self.site_df[include_filter]
+        self.site_dict = self.site_df.to_dict(orient="list")
+
+    # ------------------------------------------------------------------
+    # SOAP-descriptor based symmetry reduction
+    # ------------------------------------------------------------------
+
+    def get_soap_similarity_matrix(
+        self,
+        soap_params: dict = None,
+        probe_element: str = "X",
+    ) -> np.ndarray:
+        """Return the pairwise cosine-similarity matrix for all sites using
+        SOAP descriptors (via *dscribe*).
+
+        A ghost probe atom is placed at each site position and SOAP descriptors
+        are evaluated within the periodic slab environment.
+
+        Args:
+            soap_params (dict, optional): SOAP hyper-parameters forwarded to
+                ``dscribe.descriptors.SOAP``.  Defaults to
+                ``{r_cut: 5.0, n_max: 8, l_max: 6, sigma: 0.1}``.
+            probe_element (str, optional): Element for the probe atom
+                (must not be present in the slab). Defaults to ``"X"``.
+
+        Returns:
+            np.ndarray: Symmetric similarity matrix of shape
+            ``(n_sites, n_sites)`` with values in ``[-1, 1]``.
+
+        Requires:
+            ``dscribe`` (``pip install dscribe``).
         """
-        include = self.get_nonequivalent_sites(**kwargs)
+        soap_vectors = _compute_soap_site_vectors(
+            self.atoms, self.site_df,
+            soap_params=soap_params,
+            probe_element=probe_element,
+        )
+        return _soap_similarity_matrix(soap_vectors)
+
+    def get_nonequivalent_sites_soap(
+        self,
+        similarity_threshold: float = 0.99,
+        soap_params: dict = None,
+        method: str = "hcluster",
+    ) -> List[int]:
+        """Return indices of non-equivalent sites determined by SOAP
+        descriptor similarity and hierarchical clustering.
+
+        This is an alternative to :meth:`get_nonequivalent_sites` which relies
+        on ASE's crystallographic ``SymmetryEquivalenceCheck``.  The SOAP
+        approach is more robust for disordered or low-symmetry surfaces and
+        allows continuous tuning of the similarity threshold.
+
+        Args:
+            similarity_threshold (float, optional): Cosine similarity above
+                which two sites are deemed equivalent.  Defaults to ``0.99``.
+            soap_params (dict, optional): SOAP hyper-parameters forwarded to
+                ``dscribe.descriptors.SOAP``.  Defaults to
+                ``{r_cut: 5.0, n_max: 8, l_max: 6, sigma: 0.1}``.
+            method (str, optional): Clustering algorithm.  ``"hcluster"``
+                (default) uses agglomerative hierarchical clustering
+                (``scipy.cluster.hierarchy``);  ``"greedy"`` uses the legacy
+                greedy merging approach.
+
+        Returns:
+            List[int]: DataFrame index labels of one representative per
+            equivalence class.
+
+        Requires:
+            ``dscribe``, ``scikit-learn``, and (for *method="hcluster"*)
+            ``scipy``.
+        """
+        reduced = _filter_unique_sites_by_soap(
+            slab=self.atoms,
+            site_df=self.site_df,
+            soap_params=soap_params,
+            similarity_threshold=similarity_threshold,
+            method=method,
+        )
+        return list(reduced.index)
+
+    def soap_reduce(
+        self,
+        similarity_threshold: float = 0.99,
+        soap_params: dict = None,
+        method: str = "hcluster",
+    ):
+        """Reduce the site DataFrame to non-equivalent sites using SOAP
+        descriptors and (hierarchical) clustering.
+
+        This is the SOAP analogue of :meth:`sym_reduce`.
+
+        Args:
+            similarity_threshold (float, optional): Cosine similarity above
+                which two sites are deemed equivalent.  Defaults to ``0.99``.
+            soap_params (dict, optional): SOAP hyper-parameters forwarded to
+                ``dscribe.descriptors.SOAP``.
+            method (str, optional): ``"hcluster"`` (default) or ``"greedy"``.
+        """
+        include = self.get_nonequivalent_sites_soap(
+            similarity_threshold=similarity_threshold,
+            soap_params=soap_params,
+            method=method,
+        )
         include_filter = [i in include for i in self.site_df.index.values]
         self.site_df = self.site_df[include_filter]
         self.site_dict = self.site_df.to_dict(orient="list")

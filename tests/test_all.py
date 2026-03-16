@@ -10,7 +10,7 @@ def test_Surface():
 
 
 def test_Fragment():
-    f = Fragment(smile="COC", to_initialize=5)
+    f = Fragment(input="COC", to_initialize=5)
     assert f.smile == "COC"
 
 

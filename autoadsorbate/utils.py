@@ -51,7 +51,7 @@ def evaluate_binding(atoms, mol_indices=None):
             raise ValueError("All atoms have tag 0, cannot define fragment. Try adding 'molecule_indices' to atoms.info. " \
                     "Or use tags to define molecule (tag 0) and surface (tag >0).")
 
-            mol_inds = [i for i, t in enumerate(tags) if t==0]
+        mol_inds = [i for i, t in enumerate(tags) if t==0]
 
     mol_inds = np.array(mol_inds) + len(atoms)*2
     atoms = atoms*(2,2,1)

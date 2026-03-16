@@ -11,6 +11,7 @@ from ase.io import read
 from ase.optimize import BFGS
 from ase.optimize.minimahopping import MinimaHopping
 from ase.visualize.plot import plot_atoms
+from ase.neighborlist import NeighborList, natural_cutoffs
 from io import StringIO
 from rdkit import Chem
 from rdkit.Chem import rdDetermineBonds
@@ -48,9 +49,9 @@ def evaluate_binding(atoms, mol_indices=None):
         tags = atoms.get_tags()
         if all(t==0 for t in tags):
             raise ValueError("All atoms have tag 0, cannot define fragment. Try adding 'molecule_indices' to atoms.info. " \
-            "Or use tags to define molecule (tag 0) and surface (tag >0).")
+                    "Or use tags to define molecule (tag 0) and surface (tag >0).")
 
-        mol_inds = [i for i, t in enumerate(tags) if t==0]
+            mol_inds = [i for i, t in enumerate(tags) if t==0]
 
     mol_inds = np.array(mol_inds) + len(atoms)*2
     atoms = atoms*(2,2,1)
@@ -146,9 +147,9 @@ def rotation_matrix_from_vectors(vec1, vec2):
     :return mat: A transform matrix (3x3) which when applied to vec1, aligns it with vec2.
     """
     a, b = (
-        (vec1 / np.linalg.norm(vec1)).reshape(3),
-        (vec2 / np.linalg.norm(vec2)).reshape(3),
-    )
+            (vec1 / np.linalg.norm(vec1)).reshape(3),
+            (vec2 / np.linalg.norm(vec2)).reshape(3),
+            )
     v = np.cross(a, b)
     c = np.dot(a, b)
     s = np.linalg.norm(v)

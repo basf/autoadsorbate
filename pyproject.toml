@@ -1,6 +1,6 @@
 [project]
 name = "autoadsorbate"
-version = "0.2.5"
+version = "0.2.7"
 description = "AutoAdsorbate is a lightweight and easy-to-use Python package for generating chemically meaningful configurations of molecules and fragments on surfaces. Built with minimal dependencies and a low barrier to entry, it enables rapid setup of surface-adsorbate systems using the Surrogate-SMILES (*SMILES) representation. Ideal for researchers in catalysis, nanotech, and materials science, AutoAdsorbate streamlines dataset generation for simulations and machine learning workflows."
 authors = [
     { name="Edvin Fako", email="edvinfako@gmail.com" }

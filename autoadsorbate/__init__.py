@@ -2,7 +2,7 @@
 
 __author__ = """Fakoe Edvin"""
 __email__ = "edvinfako@gmail.com"
-__version__ = "0.2.6"
+__version__ = "0.2.7"
 
 from autoadsorbate.autoadsorbate import Fragment, Surface
 from autoadsorbate.Smile import get_marked_smiles

@@ -325,11 +325,6 @@ def get_shrinkwrap_grid(
         )
         distances_to_grid = cdist(grid_positions, slab_positions).min(axis=1)
 
-        if (distances_to_grid > touch_sphere_size).all() and (
-            grid_positions[:, 2] <= 0
-        ).all():
-            break
-
         if (distances_to_grid > touch_sphere_size).any() and (
             grid_positions[:, 2] <= 0
         ).any():

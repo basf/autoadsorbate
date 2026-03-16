@@ -63,7 +63,7 @@ To effectively simulate reactive behavior at surfaces, it is crucial to establis
 
 ### Fragment
 
-Molecules and reactive species are both initialized as the Fragment object (based on ase.Atoms). Some examples are given bellow.
+Molecules and reactive species are both initialized as the Fragment object (based on ase.Atoms). Some examples are given below.
 
 #### Molecules
 
@@ -81,7 +81,7 @@ Let us initialize a molecule of dimethyl ether (DME):
 ```python
 from autoadsorbate import Fragment
 
-f = Fragment(smile = 'COC', to_initialize = 5)
+f = Fragment(input = 'COC', to_initialize = 5)
 ```
 
 
@@ -123,7 +123,7 @@ marked_smile
 These surrogate smilles can now be used to initialize a Fragment object (we can set the number of randoms conformers to be initialized):
 
 ```python
-f = Fragment(smile = 'Cl[O+](C)(C)', to_initialize = 5)
+f = Fragment(input = 'Cl[O+](C)(C)', to_initialize = 5)
 len(f.conformers)
 ```
     5
@@ -179,7 +179,7 @@ Methoxy
 
 
 ```python
-f = Fragment(smile = 'ClOC', to_initialize = 5)
+f = Fragment(input = 'ClOC', to_initialize = 5)
 oriented_conformer_trajectory = [f.get_conformer(i) for i, _ in enumerate(f.conformers)]
 fig = docs_plot_conformers(oriented_conformer_trajectory)
 plt.show()
@@ -195,7 +195,7 @@ plt.show()
 
 
 ```python
-f = Fragment(smile = 'ClC', to_initialize = 5)
+f = Fragment(input = 'ClC', to_initialize = 5)
 oriented_conformer_trajectory = [f.get_conformer(i) for i, _ in enumerate(f.conformers)]
 fig = docs_plot_conformers(oriented_conformer_trajectory)
 plt.show()
@@ -213,7 +213,7 @@ bound through single site:
 
 
 ```python
-f = Fragment(smile = 'Cl[OH+]CC(O)C', to_initialize = 5)
+f = Fragment(input = 'Cl[OH+]CC(O)C', to_initialize = 5)
 oriented_conformer_trajectory = [f.get_conformer(i) for i, _ in enumerate(f.conformers)]
 fig = docs_plot_conformers(oriented_conformer_trajectory)
 plt.show()
@@ -229,7 +229,7 @@ Coordinated withboth hydroxil:
 
 
 ```python
-f = Fragment(smile = 'S1S[OH+]CC([OH+]1)C', to_initialize = 5)
+f = Fragment(input = 'S1S[OH+]CC([OH+]1)C', to_initialize = 5)
 oriented_conformer_trajectory = [f.get_conformer(i) for i, _ in enumerate(f.conformers)]
 fig = docs_plot_conformers(oriented_conformer_trajectory)
 plt.show()
@@ -239,6 +239,13 @@ plt.show()
     
 ![png](README_files/README_30_0.png)
     
+Generating fragments from your own atomic structure:
+
+```python
+from ase.io import read
+f = Fragment(input = read('my_slab_with_adsorbate.traj'), to_initialize = 5)
+oriented_conformer_trajectory = [f.get_conformer(i) for i, _ in enumerate(f.conformers)]
+```
 
 
 ### Surface

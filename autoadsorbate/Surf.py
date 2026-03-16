@@ -329,6 +329,12 @@ def get_shrinkwrap_grid(
             grid_positions[:, 2] <= 0
         ).all():
             break
+
+        if (distances_to_grid > touch_sphere_size).any() and (
+            grid_positions[:, 2] <= 0
+        ).any():
+            raise ValueError("At least 1 of the Shrinkwrap grid points has fallen below the slab.")
+
     new_grid_positions = starting_grid.positions
     new_grid_positions[:,2] = grid_positions[:,2]
 
@@ -1633,11 +1639,19 @@ def conformer_to_site(atoms, site, conformer, mode="optimize", overlap_thr=0):
     n_f = int(np.max(atoms.arrays["fragments"])) + 1
     conformer.arrays["fragments"] = np.array([n_f for a in conformer])
 
-    if conformer.info["smiles"][:3] == "S1S":
-        conformer.positions -= conformer[:2].get_center_of_mass()
-        conformer = conformer[2:]
-    if conformer.info["smiles"][:2] == "Cl":
-        conformer = conformer[1:]
+    if conformer.info["smiles"] is None:
+        if conformer.symbols[0] == "S" and conformer.symbols[1] == "S":
+            conformer.positions -= conformer[:2].get_center_of_mass()
+            conformer = conformer[2:]
+        if conformer.symbols[0] == "Cl":
+            conformer = conformer[1:]
+
+    else:
+        if conformer.info["smiles"][:3] == "S1S":
+            conformer.positions -= conformer[:2].get_center_of_mass()
+            conformer = conformer[2:]
+        if conformer.info["smiles"][:2] == "Cl":
+            conformer = conformer[1:]
 
     conformer = align_to_vector(conformer, site["n_vector"])
 

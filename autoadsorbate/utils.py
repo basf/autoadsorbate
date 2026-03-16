@@ -11,7 +11,133 @@ from ase.io import read
 from ase.optimize import BFGS
 from ase.optimize.minimahopping import MinimaHopping
 from ase.visualize.plot import plot_atoms
+from io import StringIO
+from rdkit import Chem
+from rdkit.Chem import rdDetermineBonds
 
+class MoleculeDesorptionError(Exception):
+    """Custom exception raised when molecule desorption is detected."""
+    def __init__(self):
+        self.message = 'Molecule is in gas phase'
+        super().__init__(self.message)
+
+def get_connectivity(atoms: ase.Atoms) -> np.ndarray:
+        """Get the connectivity matrix of an ASE Atoms object.
+        Parameters:
+            atoms (ase.Atoms): The ASE Atoms object.
+        Returns:
+            np.ndarray: The connectivity matrix.
+        """
+        cutoffs = natural_cutoffs(atoms)
+        nl = NeighborList(cutoffs, self_interaction=False, bothways=True)
+        nl.update(atoms)
+
+        return nl.get_connectivity_matrix(sparse=False)
+
+def evaluate_binding(atoms, mol_indices=None):
+    if mol_indices is not None:
+        mol_inds = mol_indices
+
+    elif 'molecule_indices' in atoms.info.keys():
+        # if molecule_indices is not there, check for tags, tag 1 , 2, 3 correspond to
+        # layer 1 2 etc, and tag 0 would be molecules.
+
+        mol_inds = atoms.info['molecule_indices']
+
+    else:
+        tags = atoms.get_tags()
+        if all(t==0 for t in tags):
+            raise ValueError("All atoms have tag 0, cannot define fragment. Try adding 'molecule_indices' to atoms.info. " \
+            "Or use tags to define molecule (tag 0) and surface (tag >0).")
+
+        mol_inds = [i for i, t in enumerate(tags) if t==0]
+
+    mol_inds = np.array(mol_inds) + len(atoms)*2
+    atoms = atoms*(2,2,1)
+
+    C = get_connectivity(atoms)
+    adsorption_idx = []
+    for i in mol_inds:
+        for j, connected in enumerate(C[i]):
+            if connected and j not in mol_inds and j not in adsorption_idx :
+                adsorption_idx .append(j)
+
+    bondlengths = []
+    for i in adsorption_idx :
+        bondlengths.append(np.min([atoms.get_distance(i, j) for j in mol_inds if C[i][j]]))
+
+    bondlengths = np.array(bondlengths)
+    sorted_inds = np.argsort(bondlengths)
+
+    adsorption_idx  = [adsorption_idx [i] for i in sorted_inds]
+
+    if len(adsorption_idx)>2:
+        adsorption_idx  = adsorption_idx [:2]
+
+    if len(adsorption_idx )==0:
+        raise MoleculeDesorptionError()
+
+    return {'binding_sites':adsorption_idx, 'molecule_indices':mol_inds}
+
+
+def transform_to_fragment(atoms):
+    """
+    Transforms an ASE Atoms object into a fragment by resetting its cell and periodic boundary conditions.
+
+    Parameters:
+    atoms (ase.Atoms): The ASE Atoms object to be transformed.
+
+    Returns:
+    ase.Atoms: The transformed fragment ASE Atoms object.
+    """
+
+    atoms = atoms.copy()
+
+    make_atoms = True
+    if atoms.symbols[0]=='Cl' or (atoms.symbols[0]=='S' and atoms.symbols[1]=='S'):
+        atoms.pbc = [False, False, False]
+        make_atoms = False
+
+        if atoms.symbols[0]=='Cl':
+            symbol = 'Cl'
+        elif (atoms.symbols[0]=='S' and atoms.symbols[1]=='S'):
+            symbol = 'S'
+
+    if make_atoms:
+        indices = evaluate_binding(atoms)
+        mol_inds = indices['molecule_indices']
+        adsorption_idx  = indices['binding_sites']
+
+        symbol = 'Cl' if len(adsorption_idx)==1 else 'S'
+
+        atoms = atoms * (2, 2, 1)
+        atoms = Atoms([Atom(symbol, atoms[j].position) for j in adsorption_idx]) + atoms[mol_inds]
+
+    string_buffer = StringIO()
+    ase.io.write(string_buffer, images=atoms, format='xyz')
+    xyz_string = string_buffer.getvalue()
+
+    raw_mol = Chem.MolFromXYZBlock(xyz_string)
+    mol = Chem.Mol(raw_mol)
+
+    try:
+        rdDetermineBonds.DetermineConnectivity(mol)
+        rdDetermineBonds.DetermineBonds(mol)
+
+    except:
+        rdDetermineBonds.DetermineConnectivity(mol)
+
+    smile = Chem.MolToSmiles(mol, isomericSmiles=True)
+    if symbol == 'Cl':
+        smile = "Cl." + smile
+    elif symbol == 'S':
+        smile = "S1S." + smile
+
+    smile += '_nonConventionalSmile'
+    atoms.info['smile'] = smile
+    atoms.pbc = [False, False, False]
+
+    return atoms
 
 def rotation_matrix_from_vectors(vec1, vec2):
     """Find the rotation matrix that aligns vec1 to vec2

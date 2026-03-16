@@ -18,6 +18,7 @@ from .Surf import conformer_to_site, get_shrinkwrap_ads_sites
 from .utils import (
     get_sorted_by_snap_dist,
     make_site_info_writable,
+    transform_to_fragment,
     _compute_soap_site_vectors,
     _soap_similarity_matrix,
     _filter_unique_sites_by_soap,
@@ -51,7 +52,7 @@ class Fragment:
 
     def __init__(
         self,
-        smile: str,
+        input: Union[str, Atoms],
         to_initialize: int = 10,
         random_seed: int = 2104,
         sort_conformers: bool = False,
@@ -61,19 +62,37 @@ class Fragment:
         Initialize attributes.
 
         Args:
-            smile (str): The SMILES string of the fragment.
+            input (str, Atoms): The SMILES string of the fragment, or an Atoms object.
             to_initialize (int, optional): The number of conformers to initialize. Defaults to 10.
             random_seed (int, optional): The random seed for conformer generation. Defaults to 2104.
             sort_conformers (bool, optional): Decides if the initial orientation of the fragment conformations is diverse.
             prune_rms_thresh (float, optional): RMSD threshold for pruning duplicates. Defaults to 0.5 Å.
         """
+        if isinstance(input, str):
+            smile = input
+            atoms_template = None
+
+        elif isinstance(input, Atoms) or isinstance(input, list):
+            smile = None
+            atoms_template = input
+
         self.smile = smile
         self.to_initialize = to_initialize
         self.randomSeed = random_seed
 
-        self.conformers = conformers_from_smile(
-            smile, to_initialize, random_seed=random_seed, prune_rms_thresh=prune_rms_thresh
-        )
+        if smile:
+            self.conformers = conformers_from_smile(
+                smile, to_initialize, random_seed=random_seed, prune_rms_thresh=prune_rms_thresh
+            )
+
+        elif isinstance(atoms_template, Atoms):
+            self.conformers = [transform_to_fragment(atoms_template.copy())]
+            self.smile = self.conformers[0].info["smile"]
+
+        elif isinstance(atoms_template, list):
+            self.conformers = [transform_to_fragment(at.copy()) for at in atoms_template]
+            self.smile = self.conformers[0].info["smile"]
+
         self.conformers_aligned = [False for _ in self.conformers]
 
         self.sort_conformers = sort_conformers

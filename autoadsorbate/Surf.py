@@ -1608,7 +1608,7 @@ def drop_fragment_to_z_zero(atoms: Atoms) -> None:
     atoms.positions -= np.array([0, 0, min_z])
 
 
-def conformer_to_site(atoms, site, conformer, mode="optimize", overlap_thr=0):
+def conformer_to_site(atoms, site, conformer, mode="optimize", overlap_thr=0, use_swirl=True):
     """
     Aligns and attaches a conformer to a specified site on a slab of atoms, optimizing the orientation to minimize overlap.
 
@@ -1618,6 +1618,9 @@ def conformer_to_site(atoms, site, conformer, mode="optimize", overlap_thr=0):
     conformer (object): An object containing the conformer to be attached.
     mode (str): The mode of operation. Currently, only 'optimize' is supported. Default is 'optimize'.
     overlap_thr (float): The overlap threshold. Default is 0.0.
+    use_swirl (bool): Whether to optimize marked fragments with swirl_fragment
+        for Cl-marked monodentates and swing_fragment for S1S-marked
+        bidentates. Default is True.
 
     Returns:
     object: The combined atoms object with the conformer attached and optimized.
@@ -1660,25 +1663,33 @@ def conformer_to_site(atoms, site, conformer, mode="optimize", overlap_thr=0):
     # out_atoms.info['site_info'] = site
 
     if conformer.info["smiles"][:3] == "S1S":
-        out_atoms = swing_fragment(
-            atoms=out_atoms,
-            fragment_index=n_f,
-            site=site,
-            resolution=10,
-            mode=mode,
-            span_angle=50,
-            overlap_thr=overlap_thr,
-        )
+        if use_swirl:
+            out_atoms = swing_fragment(
+                atoms=out_atoms,
+                fragment_index=n_f,
+                site=site,
+                resolution=10,
+                mode=mode,
+                span_angle=50,
+                overlap_thr=overlap_thr,
+            )
+        else:
+            out_atoms.info["mdf"] = minimum_fragment_distance(out_atoms)
+            out_atoms = [out_atoms]
 
     if conformer.info["smiles"][:2] == "Cl":
-        out_atoms = swirl_fragment(
-            atoms=out_atoms,
-            fragment_index=n_f,
-            site=site,
-            resolution=10,
-            mode="optimize",
-            overlap_thr=0.0,
-        )
+        if use_swirl:
+            out_atoms = swirl_fragment(
+                atoms=out_atoms,
+                fragment_index=n_f,
+                site=site,
+                resolution=10,
+                mode="optimize",
+                overlap_thr=0.0,
+            )
+        else:
+            out_atoms.info["mdf"] = minimum_fragment_distance(out_atoms)
+            out_atoms = [out_atoms]
 
     return out_atoms
 

@@ -77,6 +77,7 @@ def conformers_from_smile(
         conf = mol.GetConformer(conf_id)
         positions = conf.GetPositions()
         atoms = Atoms(symbols, positions=positions)
+        atoms.info["smiles"] = smiles
         conformer_trj.append(atoms)
 
     print(f'User requested {to_initialize = } conformers.')

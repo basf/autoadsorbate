@@ -626,19 +626,23 @@ class Surface:
         overlap_thr=1.5,
         verbose=False,
         parallel=None,
+        use_swirl=True,
     ):
         """
         Populates the specified sites with the given fragment, optimizing the orientation to minimize overlap.
 
         Parameters:
         fragment (object): An object containing the fragment to be attached.
-        site_index (str or int): The index of the site to be populated. Default is 'all'.
+        site_index (str or int or list[int]): The index of the site to be populated. Default is 'all'.
         sample_rotation (bool): Whether to sample different rotations of the fragment. Default is True.
         mode (str): The mode of operation. Can be 'heuristic' or 'all'. Default is 'heuristic'.
         conformers_per_site_cap (int or None): The maximum number of conformers per site. Default None mean the maximum number of conformers.
         overlap_thr (float): The overlap threshold. Default is 1.5.
         verbose (bool): Whether to print detailed information during execution. Default is False.
         parallel (int): If value >0, parallelize the configuration on the number of CPU specified. Default None
+        use_swirl (bool): Whether to optimize marked fragments with swirl_fragment
+            for Cl-marked monodentates and swing_fragment for S1S-marked
+            bidentates. Default is True.
 
         Returns:
         list: A list containing the optimized atoms objects for each site.
@@ -649,6 +653,11 @@ class Surface:
 
         all_sites = {}
         site_df = self.site_df
+	
+        if isinstance(site_index, int):
+            site_df = site_df.loc[[site_index]]
+        elif isinstance(site_index, list):
+            site_df = site_df.loc[site_index]
 
         if mode.lower() == "all":
             sites = [site_df.loc[i].to_dict() for i in site_df.index.values]
@@ -686,7 +695,10 @@ class Surface:
                     ca.rotate(a, "z")
                     conformers.append(ca)
         else:
-            conformers = [c.copy() for c in fragment.conformers]
+            conformers = [
+                fragment.get_conformer(i)
+                for i, _ in enumerate(fragment.conformers)
+            ]
 
         out_trj = []
 
@@ -702,13 +714,13 @@ class Surface:
 
             if parallel != None:
 
-                c_trj.extend(Parallel(n_jobs=parallel)(delayed(conformer_to_site)(self.atoms, site, conformer, mode="optimize", overlap_thr=0) for conformer in conformers))
+                c_trj.extend(Parallel(n_jobs=parallel)(delayed(conformer_to_site)(self.atoms, site, conformer, mode="optimize", overlap_thr=0, use_swirl=use_swirl) for conformer in conformers))
                 c_trj = [x[0] for x in c_trj]
 
             else:
                 for conformer in conformers:
                     c_trj += conformer_to_site(
-                        self.atoms, site, conformer, mode="optimize", overlap_thr=0
+                        self.atoms, site, conformer, mode="optimize", overlap_thr=0, use_swirl=use_swirl
                     )  # the zero is intentional
 
             if conformers_per_site_cap == None:
